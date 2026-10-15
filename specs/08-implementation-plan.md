@@ -24,8 +24,7 @@ Order matters: foundation → public → auth/booking → organizer → admin �
 - [x] M5 complete: admin overview (users/pending/bookings/public counts), approval queue (approve → public, reject with ≥10-char reason dialog, processing/success/error states), users search + suspend/reinstate (self-protected), all-bookings table, attendee role gates. Approval → public visibility verified in Vitest (same-heap). All gates green (tsc, eslint, build, vitest 37, playwright 28/28).
 
 ## M6 — Hardening & handoff
-Full Playwright suite (14 scenarios in `09-test-plan.md`), mobile 360px pass, a11y pass (keyboard + axe-ish manual), README run instructions, spec/code alignment check, Flask-integration notes.
-**Gates:** all suites green; Definition of Done per feature.
+- [x] M6 complete: E-06/E-07/E-13/E-14 closed in `e2e/acceptance.spec.ts` (incl. 360px sweep of all MVP pages); reject-dialog autofocus + Escape; alignment verified (no fetch outside `lib/api`, no hardcoded URLs, no localStorage); root + frontend READMEs and `10-flask-handoff.md` written. Final gates green (tsc, eslint, build, vitest 37, playwright 38/38).
 
 ## Test mapping (summary; detail in 09)
 M2: T-01..T-04 · M3: T-05..T-09 · M4: T-10..T-13 · M5: T-14..T-16 · M6: T-17 full matrix.

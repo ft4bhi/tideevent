@@ -15,7 +15,7 @@ Each AC lists **Given / When / Then** plus the spec test in `09-test-plan.md`.
 - AC-11 Create event: Given valid new-event input, when submitting, then event is created with PENDING status and appears in organizer list (not public); invalid input shows inline errors.
 - AC-12 Edit/resubmit: Given own REJECTED event with reason, when editing, then reason is displayed; saving sets status back to PENDING; editing another organizer's event is forbidden (403 + error page).
 - AC-13 Organizer bookings: Given own event, when viewing bookings, then attendee rows render; another organizer's event bookings are forbidden.
-- AC-14 Pending hidden: Given a PENDING event, when browsing as guest/attendee, then it never appears in `/`, `/events`, search, or direct booking (direct URL shows "under review", no Book action).
+- AC-14 Pending hidden: Given a PENDING event, when browsing as guest/attendee, then it never appears in `/`, `/events`, search, or booking; a direct details URL returns the not-found page for non-owners (no details, no Book action). Owners/admins see it with an "Under review" state instead.
 - AC-15 Admin overview: Given an admin, when viewing `/admin`, then user/event/pending/booking counts render.
 - AC-16 Approve/reject: Given a PENDING event in `/admin/events`, when approving, then status → APPROVED and event becomes public; when rejecting without reason, then blocked with validation; with reason, then status → REJECTED + reason stored.
 - AC-17 Admin users: Given `/admin/users`, when searching, then table filters by name/email; suspend/reinstate toggles status with success/error feedback. Non-admins get 403.

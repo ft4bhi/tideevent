@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function RejectDialog({
@@ -18,6 +18,15 @@ export function RejectDialog({
 }) {
   const [reason, setReason] = useState("");
   const [validation, setValidation] = useState<string | null>(null);
+
+  // Close on Escape (unless a rejection is in flight).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !pending) onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pending, onCancel]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +70,7 @@ export function RejectDialog({
             onChange={(e) => setReason(e.target.value)}
             placeholder="What must change before approval?"
             disabled={pending}
+            autoFocus
             className="min-h-[44px] w-full rounded-lg border border-[#E7E7E2] bg-white px-3 py-2 text-base text-[#202B3C] placeholder:text-[#687386] focus:border-[#B95F43] focus:outline-2 focus:outline-[#B95F43]"
           />
           {validation && (

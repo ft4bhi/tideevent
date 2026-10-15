@@ -40,3 +40,23 @@ Contract tests against live `/api/v1` (same cases, `USE_MOCK=false`): auth round
 
 ## 5. Manual checklist (M6)
 Nav/roles render correctly; skeletons→content; empty states; dialogs trap focus; ticket prints legibly; `NEXT_PUBLIC_USE_MOCK=false` without backend shows honest error (never silent mock).
+
+## 6. Final coverage map (M6 — all green, chromium + mobile/Pixel 7)
+| Scenario | Spec file |
+|---|---|
+| E-01 guest browse | `e2e/browse.spec.ts` |
+| E-02 gate → login | `e2e/booking.spec.ts` |
+| E-03 details → booking | `e2e/booking.spec.ts` |
+| E-04 full event | `e2e/booking.spec.ts` (+ browse sold-out badge) |
+| E-05 demo ticket | `e2e/booking.spec.ts` |
+| E-06 failed booking, no ticket | `e2e/acceptance.spec.ts` (duplicate attempt stays on page) |
+| E-07 cross-user ticket | `e2e/acceptance.spec.ts` |
+| E-08 organizer create+edit | `e2e/organizer.spec.ts` |
+| E-09 pending hidden (search + direct URL 404) | `e2e/organizer.spec.ts` + `e2e/acceptance.spec.ts` |
+| E-10 cross-organizer 403 | `e2e/organizer.spec.ts` |
+| E-11 approve/reject | `e2e/admin.spec.ts` (+ Vitest approve→public) |
+| E-12 rejected → resubmit | `e2e/organizer.spec.ts` |
+| E-13 360px no overflow, all MVP pages | `e2e/acceptance.spec.ts` (+ browse spot-check) |
+| E-14 readable errors | `e2e/acceptance.spec.ts` (auth, missing event/booking) |
+
+Vitest (37): format/availability, auth + event schemas, mock matrix — filters, booking 401/409/410/403, ownership, approval transitions, suspend-blocks-login. Known E2E limitation: approve→public visibility is asserted in Vitest only (public pages render server-side from a separate mock heap; see `specs/10-flask-handoff.md`).
