@@ -23,14 +23,31 @@ Rules: subtle borders over shadows; no gradients; generous whitespace; one prima
 - `PageHeader`: title + subtitle + optional action (e.g. Create Event).
 
 ## 3. Components (add to `components/ui/` only as needed)
-`Button` (primary terracotta / secondary outline / ghost / destructive), `Input`, `Select`, `Textarea`, `DateInput`, `Card`, `Badge` (status: APPROVED green / PENDING amber / REJECTED red / CONFIRMED navy / SOLD OUT slate; category + Free/₹), `Skeleton`, `EmptyState` (icon + title + copy + action), `Alert` (error/success/info), `Dialog` (reject-reason, confirm booking), `Table` → stacked cards on mobile, `Avatar`, `Tabs` (admin/organizer lists), `FormField` (label + error binding for RHF).
+`Button` (primary terracotta / secondary outline / ghost / destructive), `Input`, `Select`, `Textarea`, `DateInput`, `Card`, `Badge` (status: ACTIVE green / SUSPENDED amber / CANCELLED slate / CONFIRMED navy / SOLD OUT slate; category + Free/₹), `Skeleton`, `EmptyState` (icon + title + copy + action), `Alert` (error/success/info), `Dialog` (reason forms, confirm booking), `Table` → stacked cards on mobile, `Avatar`, `Tabs` (admin/organizer lists), `FormField` (label + error binding for RHF). Retire `PENDING/APPROVED/REJECTED` badge tones with the approval queue.
 
 ## 4. Domain components
 - `EventCard`: 4:3 poster (`next/image`), category badge, title (2-line clamp), date + venue rows with icons, footer price + availability; full-width tap → details.
 - `EventGrid`: responsive 1/2/3 cols; skeletons while loading.
 - `EventFilters`: search input + category chips + city select + date presets + native date; reflects URL params.
-- `EventDetails`: 2-col desktop (poster | info + sticky booking panel), stacked mobile; availability bar; organizer row; Book Now / Sold out / Under review states.
-- `TicketCard`: dashed divider, mono ticket ID, status badge, event meta, attendee; print-friendly; mock-mode "Demonstration data" ribbon.
+- `EventDetails`: 2-col desktop (poster | info + sticky booking panel), stacked mobile; availability info; organizer row; mode-appropriate booking area (seat map or ticket selector) / Sold out / unavailable states for SUSPENDED/CANCELLED.
+- `TicketCard`: dashed divider, mono reference, status badge, event meta, seat/line assignments, attendee; print-friendly; mock-mode "Demonstration data" ribbon.
+- `SeatMap` (new, BookMyShow-inspired interaction, original styling): section blocks with
+  name + price, labeled rows (A, B, C…) and numbered seats; four visual states —
+  available (outline), selected (terracotta fill), booked (muted, disabled),
+  accessible (icon marker, same inventory rules); click/tap toggles selection
+  (keyboard: seats are real `<button>`s with `aria-pressed` + row/seat labels);
+  legend; live "N seats · ₹total" summary; horizontal scroll/zoom container for wide
+  layouts; never hover-only. Selected ≠ confirmed until the server responds —
+  conflicts surface as readable 409 errors.
+- `TicketSelector` (new, GENERAL_ADMISSION): per-type rows with −/+ quantity steppers
+  (1–10), remaining counts, line totals, grand total; free types identical controls.
+- `LayoutEditor` (new, organizer): template picker → editable sections (name, price),
+  rows (label, seat count), per-seat accessible flags; structured forms, no drag-drop;
+  locked with explanation once bookings exist.
+- `InvitationAccept` (new): token-state page (valid form / expired / used / invalid),
+  password set + login-hint for existing emails.
+- `EventStatusActions` (new, admin; replaces approval queue): Suspend (reason dialog),
+  Reactivate, Cancel (reason dialog) with processing/success/error states.
 
 ## 5. Page states (every API page)
 loading (skeletons) · loaded · empty (`EmptyState`) · validation (inline) · 401 (login prompt w/ `next`) · 403 (forbidden card) · 404 (not-found) · 500/network (`Alert` + retry) · success (confirmation) · disabled/sold-out (disabled button + reason). Never blank screens or fake success.

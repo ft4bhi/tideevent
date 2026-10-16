@@ -28,7 +28,7 @@ npx playwright test            # starts dev server automatically
   `admin/`, `auth/` guards
 - `features/auth/` — session context, login/register forms
 - `lib/api/` — `client.ts` (base URL, errors), `endpoints/*`, `mock/` provider
-- `lib/validation/` — Zod schemas (mirror these in Flask)
+- `lib/validation/` — Zod schemas (mirror DRF serializer rules)
 - `lib/utils/`, `types/`, `config/`, `e2e/` — Playwright journeys
 
 ## Conventions
@@ -36,4 +36,4 @@ npx playwright test            # starts dev server automatically
 - Server Components fetch via `lib/api/endpoints/*`; never `fetch` in components.
 - Data-fetching server components sit inside `<Suspense>` (required by `cacheComponents`).
 - Mock mode is explicit and bannered; HTTP failures are surfaced, never silently mocked.
-- See `../specs/` for requirements, contracts, and the Flask handoff.
+- See `../specs/` for requirements, the DRF contract, and the Django backend plan.

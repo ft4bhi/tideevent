@@ -1,0 +1,9 @@
+# Backend (Django) — never commit real secrets.
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+.env
+.pytest_cache/
+.ruff_cache/

@@ -1,68 +1,122 @@
-# 05 — Data Model
+# 05 — Data Model (Django revision, 2026-10-16)
 
-Authoritative store will be PostgreSQL via Flask/SQLAlchemy. Frontend mirrors with TypeScript types in `types/domain.ts`. Backend-only fields are never sent to the client.
+Authoritative store: PostgreSQL (Neon) via Django ORM + migrations. Custom user model
+from the first migration. Table names use app-label prefixes (`accounts_`, `events_`,
+`bookings_`). All ids are UUID PKs (`default=uuid4`, non-editable). Times are
+timezone-aware (`USE_TZ=True`, UTC storage).
 
-## 1. User
+## 1. accounts.User (custom, email login)
 | Field | Type | Notes |
 |---|---|---|
-| `id` | UUID string | PK |
-| `name` | string (1–80) | required |
-| `email` | string, unique, lowercase | validated |
-| `password_hash` | string | **backend only**, never in API responses |
-| `role` | `ATTENDEE \| ORGANIZER \| ADMIN` | guest = unauthenticated, not a role |
-| `status` | `ACTIVE \| SUSPENDED` | for admin moderation (default ACTIVE) |
-| `created_at` | ISO-8601 | server-generated |
+| `id` | UUID PK | |
+| `email` | unique, normalized lowercase | `USERNAME_FIELD`; RFC-valid, ≤254 |
+| `name` | varchar(80) | required |
+| `password` | Django hash | never serialized |
+| `role` | `ATTENDEE` / `ORGANIZER` / `ADMIN`, default ATTENDEE | business role |
+| `status` | `ACTIVE` / `SUSPENDED`, default ACTIVE | login blocked when SUSPENDED |
+| `is_staff` / `is_superuser` | bool | Django privileges; see mapping |
+| `created_at` / `updated_at` | datetimes | auto |
 
-## 2. Event
+**Role mapping (D1, recommended):** `is_superuser=True` requires `role=ADMIN`
+(enforced in `clean()`/save); `is_staff` auto-syncs True when `role==ADMIN` or
+`is_superuser` (gives business admins Django-admin access without a second source
+of truth). `is_staff` alone grants no business permissions — DRF permission classes
+check `role` + `status`. `createsuperuser` prompts email + name and creates ADMIN.
+
+## 2. accounts.OrganizerInvitation
 | Field | Type | Notes |
 |---|---|---|
-| `id` | UUID | PK |
-| `title` | string (3–120) | required |
-| `description` | string (10–5000) | required |
-| `category` | enum: `MUSIC \| COMEDY \| THEATRE \| WORKSHOP \| SPORTS \| FOOD \| TECH \| ART` | required; justified display/filter need |
-| `starts_at` | ISO-8601 | must be future on create |
-| `location` | string (venue + city) | required; city part used for filter |
-| `city` | string | denormalized filter aid (from fixed city list) |
-| `capacity` | positive int (≥1, ≤100000) | required |
-| `booked_count` | int ≥ 0 | **derived/cached**, not authority |
-| `organizer_id` | UUID | FK → User |
-| `organizer_name` | string | denormalized for public display |
-| `poster_url` | string (URL, optional) | remote image; upload-ready later |
-| `price_inr` | int ≥ 0 (optional, default 0) | display only; 0 = Free; no payments |
-| `status` | `PENDING \| APPROVED \| REJECTED` | default PENDING |
-| `rejection_reason` | string (optional) | required when REJECTED |
-| `created_at` | ISO-8601 | server-generated |
+| `id` | UUID PK | |
+| `email` | lowercase | intended recipient |
+| `token_hash` | char(64), unique | SHA-256 of `secrets.token_urlsafe(32)`; raw token never stored |
+| `created_by` | FK User (admin, PROTECT) | inviter audit |
+| `status` | `PENDING` / `ACCEPTED` / `EXPIRED` / `REVOKED` | `EXPIRED` computed from `expires_at`, stored on use |
+| `expires_at` | datetime | default created + 7 days |
+| `accepted_at` / `accepted_by` | nullable / FK User | acceptance audit |
+| `created_at` | datetime | |
+| Constraints | partial-unique: one PENDING per `email` | replacement = revoke + recreate |
 
-Display helpers: `availability = capacity - booked_count`; `isSoldOut = availability <= 0`; `priceLabel = price_inr === 0 ? 'Free' : '₹' + price_inr`.
+Policy A (recommended) for existing accounts: anonymous acceptance where the email
+already belongs to a user → 409 `INVITATION_LOGIN_REQUIRED`; logged-in-as-email
+acceptance upgrades ATTENDEE→ORGANIZER (keeps history, sets `accepted_by`).
+ORGANIZER/ADMIN recipients accepting → idempotent success (role already sufficient).
+Never creates ADMIN.
 
-## 3. Booking
+## 3. events.Event
 | Field | Type | Notes |
 |---|---|---|
-| `id` | UUID | PK |
-| `user_id` | UUID | FK → User |
-| `event_id` | UUID | FK → Event |
-| `ticket_id` | unique string e.g. `TD-7F3K2A` | server-generated, human-readable |
-| `status` | `CONFIRMED \| CANCELLED` | MVP creates CONFIRMED; cancel optional-later |
-| `booked_at` | ISO-8601 | server-generated |
-| (joined views) | `event: EventSummary`, `attendee_name/email` | for ticket + tables |
+| `id` | UUID PK | |
+| `organizer` | FK User PROTECT | owner; admin reassignment is out of MVP |
+| `title` (3–120), `description` (10–5000) | text | validated server-side |
+| `category` | enum (8 existing) | unchanged |
+| `starts_at` | tz-aware | must be future on create |
+| `location`, `city` | text | unchanged semantics |
+| `poster_url` | URL, optional | |
+| `booking_mode` | `RESERVED_SEATING` / `GENERAL_ADMISSION` | immutable once confirmed bookings exist (serializer + check in `clean`) |
+| `capacity` | positive int, nullable | **GA only** (required then); RS capacity is derived (count of sellable seats) |
+| `status` | `ACTIVE` / `SUSPENDED` / `CANCELLED`, default ACTIVE | |
+| `status_reason` | text | required when SUSPENDED or CANCELLED (admin accountability) |
+| `created_at` / `updated_at` | datetimes | |
 
-## 4. Relationships
-- User(organizer) 1—N Event (`organizer_id`).
-- User(attendee) 1—N Booking (`user_id`).
-- Event 1—N Booking (`event_id`).
-- Constraint (backend): one active (CONFIRMED) booking per (`user_id`, `event_id`); second attempt → 409 `BOOKING_ALREADY_EXISTS`.
-- Constraint (backend): booking allowed only if event `APPROVED` and `booked_count < capacity`, checked transactionally (row lock / serializable).
+Derived (properties, never stored): GA `remaining = capacity − confirmed qty`;
+RS `capacity/seats counts`; `starting_price_inr` = min section/ticket-type price;
+`sold_out` flag. Bookings preserved on suspend/cancel (no cascade deletes).
 
-## 5. TypeScript (target `types/domain.ts`)
-```ts
-export type Role = 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
-export type EventStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type BookingStatus = 'CONFIRMED' | 'CANCELLED';
-export type EventCategory = 'MUSIC'|'COMEDY'|'THEATRE'|'WORKSHOP'|'SPORTS'|'FOOD'|'TECH'|'ART';
-export interface User { id: string; name: string; email: string; role: Role; status: 'ACTIVE'|'SUSPENDED'; created_at: string; }
-export interface EventItem { id: string; title: string; description: string; category: EventCategory; starts_at: string; location: string; city: string; capacity: number; booked_count: number; organizer_id: string; organizer_name: string; poster_url?: string; price_inr: number; status: EventStatus; rejection_reason?: string; created_at: string; }
-export interface Booking { id: string; user_id: string; event_id: string; ticket_id: string; status: BookingStatus; booked_at: string; event?: Pick<EventItem,'id'|'title'|'starts_at'|'location'|'poster_url'>; attendee_name?: string; attendee_email?: string; }
-```
+## 4. Seating (RESERVED_SEATING; all CASCADE from event)
+- **events.VenueLayoutTemplate**: `id`, `name` (Auditorium, Stadium/Arena, Cinema,
+  Conference, Custom), `description`, `layout_json` (JSON: sections → rows →
+  seat counts + prices + accessible flags), `is_active`. Read-only at runtime;
+  organizers instantiate editable copies.
+- **events.EventSection**: `id`, `event` FK CASCADE, `name`, `price_inr` ≥ 0,
+  `sort_order`. Unique (`event`, `name`).
+- **events.EventRow**: `id`, `section` FK CASCADE, `label` (`A`, `B`, …),
+  `sort_order`. Unique (`section`, `label`).
+- **events.EventSeat**: `id`, `row` FK CASCADE, `number` (`1`…`30`), `is_accessible`
+  default False, `is_sellable` default True. Unique (`row`, `number`). Indexes on
+  (`row`, `number`). "Booked" is derived: exists active `BookingSeat`.
+- Lock rule: after the first CONFIRMED booking, sections/rows/seats are immutable
+  (add/remove/rename blocked; metadata + prices stay editable — prices are display
+  only since no payments).
 
-## 6. Seed data (mock + future Flask seed)
-Minimum: 3 users (1 attendee, 1 organizer, 1 admin), 8 events (6 approved across ≥4 categories/≥3 cities incl. 1 sold-out + 1 free; 1 pending; 1 rejected with reason), 3 bookings for attendee. Passwords only in backend seed, never in frontend fixtures.
+## 5. Admission (GENERAL_ADMISSION)
+- **events.TicketType**: `id`, `event` FK CASCADE, `name`, `price_inr` ≥ 0 (0 = free,
+  consumes capacity identically), `quantity_total` > 0, `sort_order`.
+  Unique (`event`, `name`). Remaining derived from confirmed `BookingItem` sums.
+- Lock rule: after first CONFIRMED booking, types/quantities immutable (metadata
+  editable). Free and paid lines share all validation and inventory paths.
+
+## 6. bookings.Booking
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `user` | FK User PROTECT | attendee (organizers booking as attendees included) |
+| `event` | FK Event PROTECT | history preserved |
+| `reference` | unique, e.g. `TD-XXXXXX` | human ticket ref; collision-retry on generate |
+| `status` | `CONFIRMED` / `CANCELLED`, default CONFIRMED | |
+| `booked_at` | datetime | server-set |
+| `cancelled_at` | nullable | set on cancel |
+- **bookings.BookingSeat** (RS): `id`, `booking` FK CASCADE, `seat` FK PROTECT,
+  `is_active` default True (False = released by cancellation; rows kept for audit).
+  **Partial unique**: (`seat`) WHERE `is_active` — one active assignment per seat.
+- **bookings.BookingItem** (GA): `id`, `booking` FK CASCADE, `ticket_type` FK
+  PROTECT, `quantity` 1–10 per line. Availability = `quantity_total − Σ confirmed qty`.
+- Cancellation: attendee-owned CONFIRMED booking before `starts_at` → CANCELLED +
+  `cancelled_at`; seats `is_active=False`; GA capacity returns automatically
+  (derived). No refunds (no payments).
+
+## 7. Relationships & integrity summary
+- User 1—N Event (`organizer`, PROTECT); User 1—N Booking (PROTECT); Event 1—N
+  Booking (PROTECT); Event 1—N Section 1—N Row 1—N Seat (CASCADE down);
+  Event 1—N TicketType (CASCADE); Booking 1—N BookingSeat/BookingItem.
+- Every write path that consumes inventory runs in `transaction.atomic` with
+  `select_for_update()` on Event (+ TicketType / EventSeat rows); pre-check, insert,
+  re-verify, commit; IntegrityError → clean 409 rollback.
+- No seat-hold table in MVP (documented limitation, `11-django-backend-plan.md` R5).
+
+## 8. Frontend TypeScript delta (planned, not now)
+`EventStatus: 'ACTIVE'|'SUSPENDED'|'CANCELLED'`; `EventItem` gains `booking_mode`,
+loses `booked_count`/`rejection_reason`/`price_inr` (→ `starting_price_inr`,
+`remaining`, `sold_out`, `sections?`, `ticket_types?`); `Booking` gains
+`reference` (keep `ticket_id` as alias during transition), `seats?: string[]`,
+`items?: {ticket_type, quantity}[]`, `cancelled_at?`; new `OrganizerInvitation`
+type; register input drops `role`. Mock provider extended to modes + invitations.

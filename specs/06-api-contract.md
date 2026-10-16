@@ -1,52 +1,81 @@
-# 06 — API Contract (proposed Flask REST, `/api/v1`)
+# 06 — API Contract (Django REST Framework, `/api/v1`, 2026-10-16)
 
-**Status:** proposed — no backend exists yet. Frontend `lib/api/` will be built against this contract with a mock implementing identical types. Any endpoint added during implementation must be documented here first.
+**Status:** proposed — Django backend does not exist yet. Replaces the Flask
+revision entirely. Frontend keeps working on mocks; integration is incremental
+per `11-django-backend-plan.md`. New endpoints must be documented here first.
 
-Base URL: `{NEXT_PUBLIC_API_BASE_URL}` e.g. `http://localhost:5000/api/v1`.
-Auth: backend-managed **HttpOnly session cookie** (`SameSite=Lax`, `Secure` in prod) set on login/register; `GET /auth/me` resolves session. No tokens in localStorage. CSRF: Flask-WTF / double-submit cookie for mutating routes (document final choice before integration).
-IDs: UUIDs. Times: ISO-8601 UTC. Errors: `{ "error": { "code": "SNAKE_CODE", "message": "Human readable" } }` with matching HTTP status.
+Base URL: `{NEXT_PUBLIC_API_BASE_URL}` e.g. `http://localhost:8000/api/v1` (trailing
+slashes per DRF router conventions; frontend client normalizes).
+Auth: DRF `SessionAuthentication` — sessionid cookie (`HttpOnly`, `SameSite=Lax`,
+`Secure` in prod) + `csrftoken` cookie; mutating requests send
+`X-CSRFToken: <csrftoken>` (frontend `client.ts` change, planned). CORS:
+allowlist the Next origin with `CORS_ALLOW_CREDENTIALS=True`. No tokens in
+localStorage. IDs: UUIDs. Times: ISO-8601 UTC. Pagination: `?page=&per_page=`
+(default 20) → `{ data, meta: { total, page, per_page } }` (keeps frontend `Paged`
+shape). Errors: `{ "error": { "code": "SNAKE_CODE", "message": "Human readable",
+"fields"?: {…} } }` via a custom DRF exception handler.
+**Session-auth note:** DRF coerces anonymous 401 → 403 (no `WWW-Authenticate`
+header), so unauthenticated requests receive **403 `FORBIDDEN`** ("Authentication
+credentials were not provided"). Clients treat 401/403 as login-required.
 
-## Auth
+## Auth (`/auth/`)
 | Method & path | Auth | Request | Success | Errors |
 |---|---|---|---|---|
-| `POST /auth/register` | public | `{ name, email, password, role: ATTENDEE\|ORGANIZER }` (ADMIN → 422) | 201 `{ user }` + session cookie | 422 validation, 409 `EMAIL_EXISTS` |
-| `POST /auth/login` | public | `{ email, password }` | 200 `{ user }` + cookie | 401 `INVALID_CREDENTIALS`, 403 `ACCOUNT_SUSPENDED` |
-| `POST /auth/logout` | session | — | 204, clears cookie | — |
-| `GET /auth/me` | session | — | 200 `{ user }` \| 401 `{ user: null }` pattern (200 with null or 401 — **finalize: 200 + `{user:null}`** to simplify guards) | — |
+| `POST /auth/register` | public | `{ name, email, password }` — role NOT accepted | 201 `{ user }` + session (auto-login, preserves current UX) | 422 validation, 409 `EMAIL_EXISTS` (role field → 422 `ROLE_NOT_ALLOWED`) |
+| `POST /auth/login` | public | `{ email, password }` | 200 `{ user }` + cookies | 400 `INVALID_CREDENTIALS`, 403 `ACCOUNT_SUSPENDED` |
+| `POST /auth/logout` | session | — | 204/200, clears cookie | — |
+| `GET /auth/me` | optional session | — | 200 `{ user }` or `{ user: null }` (unchanged guard behavior) | — |
 
-`User` response: `{ id, name, email, role, status, created_at }` — never `password_hash`.
+`User`: `{ id, name, email, role, status, created_at }` — never password data.
+Rate-limit login + invitation endpoints (e.g. AnonRateThrottle 10/min).
+
+## Organizer invitations
+| Method & path | Auth | Notes |
+|---|---|---|
+| `POST /admin/invitations` | admin | `{ email }` → 201 invitation `{ id, email, status, expires_at, email_sent }`; revokes prior PENDING for email; send failure keeps PENDING + `email_sent:false` |
+| `GET /admin/invitations` | admin | `?status=` filter, paginated |
+| `POST /admin/invitations/:id/resend` | admin | rotates to a fresh token (old link dies), re-sends; 200 `{ email_sent }` (non-PENDING → 410) |
+| `POST /admin/invitations/:id/revoke` | admin | PENDING → REVOKED |
+| `GET /invitations/validate?token=` | public | 200 `{ email, expires_at, valid }` / 404 `INVITATION_INVALID`, 410 `INVITATION_EXPIRED`/`INVITATION_USED`; expired/used/revoked reported as 200 `{ valid: false, code, message }` |
+| `POST /invitations/accept` | optional session | `{ token, name?, password }` → atomic consume (`select_for_update` + conditional update); creates ORGANIZER or upgrades logged-in matching ATTENDEE; anonymous + existing email → 409 `INVITATION_LOGIN_REQUIRED`; logged-in different email → 403 `INVITATION_EMAIL_MISMATCH`; consumed → 410 `INVITATION_USED`; revoked → 410 `INVITATION_REVOKED`; never ADMIN |
 
 ## Public events
-| Method & path | Query/body | Success | Errors |
-|---|---|---|---|
-| `GET /events` | `q?, category?, city?, date? (YYYY-MM-DD) \| preset=today\|tomorrow\|weekend\|week, page?, per_page?` → only APPROVED + upcoming, ordered by `starts_at` | 200 `{ data: EventItem[], meta: { total, page, per_page } }` | 422 bad filter |
-| `GET /events/:id` | — (APPROVED visible publicly; PENDING/REJECTED → 404 for non-owners/non-admins) | 200 `{ data: EventItem }` | 404 `EVENT_NOT_FOUND` |
+| Method & path | Notes |
+|---|---|
+| `GET /events` | ACTIVE + upcoming only; `q?, category?, city?, date?/preset?, page?, per_page?`; includes `starting_price_inr`, `remaining`, `sold_out`, `booking_mode` |
+| `GET /events/:id` | ACTIVE public; SUSPENDED/CANCELLED → owner sees with status banner, admin sees, others 404 `EVENT_NOT_FOUND`; includes full inventory (sections/rows/seats with `booked` flags, or ticket types with `remaining`) |
+
+## Organizer (`/organizer/`, role ORGANIZER/ADMIN, owners only)
+| Method & path | Notes |
+|---|---|
+| `GET /organizer/events` | own events, paginated |
+| `POST /organizer/events` | metadata + `booking_mode` + inventory (nested `sections`/`ticket_types`, or `template_id` for RS); creates **ACTIVE** immediately; 201 |
+| `PATCH /organizer/events/:id` | partial metadata (+ full inventory replacement while unlocked); mode/inventory locked per `05` after bookings (`INVENTORY_LOCKED`/`MODE_IMMUTABLE` 409); `status` rejected (admin-managed); 403 `NOT_EVENT_OWNER` |
+| Inventory | `POST /organizer/events/:id/sections` (bulk replace, empty clears), `/organizer/sections/:id/rows` (bulk replace), `/organizer/events/:id/ticket-types` (bulk replace), `POST /organizer/events/:id/layout { template_id }` (RS, empty layout only) + `GET` layout |
+| `GET /organizer/events/:id/bookings` | own event only; bookings with seats/lines + attendee info (B2 returns the empty envelope; populated in B3) |
 
 ## Attendee bookings
-| Method & path | Auth | Success | Errors |
-|---|---|---|---|
-| `POST /events/:id/bookings` | attendee/organizer session | 201 `{ data: Booking }` (CONFIRMED + `ticket_id`) | 401, 404 event, 410 `EVENT_NOT_APPROVED`, 409 `EVENT_SOLD_OUT` / `BOOKING_ALREADY_EXISTS`, 403 suspended |
-| `GET /bookings/me` | session | 200 `{ data: Booking[] }` (own only, with event summary) | 401 |
-| `GET /bookings/:id` | session (owner or admin; organizer only if own event) | 200 `{ data: Booking }` | 401, 403 `BOOKING_FORBIDDEN`, 404 |
-
-## Organizer
-| Method & path | Auth | Request | Success | Errors |
-|---|---|---|---|---|
-| `GET /organizer/events` | organizer | — | 200 `{ data: EventItem[] }` (own) | 401/403 |
-| `POST /organizer/events` | organizer | `{ title, description, category, starts_at, location, city, capacity, poster_url?, price_inr? }` | 201 PENDING event | 422 (incl. past date, bad capacity), 401/403 |
-| `PATCH /organizer/events/:id` | organizer **owner** | partial same fields; editing REJECTED → status resets PENDING | 200 updated | 403 `NOT_EVENT_OWNER`, 409 `EVENT_NOT_EDITABLE` (if APPROVED with bookings — finalize: allow edit but stays APPROVED? **decision: APPROVED events editable except date/capacity shrink below booked → 409**) |
-| `GET /organizer/events/:id/bookings` | organizer owner | — | 200 `{ data: Booking[] }` with attendee info | 401/403/404 |
+| Method & path | Notes |
+|---|---|
+| `POST /events/:id/bookings` | `{ seats: [seat_ids] }` (RS) or `{ items: [{ ticket_type_id, quantity 1–10 }] }` (GA); transactional; 201 `{ booking }`; 409 `EVENT_SOLD_OUT` / `SEAT_UNAVAILABLE` / `TICKETS_UNAVAILABLE`, 403 `EVENT_UNAVAILABLE` (suspended/cancelled) or `FORBIDDEN` (anonymous), 404 |
+| `GET /bookings/me` | own, paginated, with event summary + seats/lines |
+| `GET /bookings/:id` | owner / own-event organizer / admin; else 403 `BOOKING_FORBIDDEN`, 404 |
+| `POST /bookings/:id/cancel` | own CONFIRMED booking before `starts_at` → CANCELLED + inventory released; else 409 `BOOKING_NOT_CANCELLABLE` |
 
 ## Admin
-| Method & path | Auth | Request/Success |
-|---|---|---|
-| `GET /admin/events` | admin; `?status=PENDING` default | 200 pending list with organizer info |
-| `PATCH /admin/events/:id/approval` | admin; `{ action: APPROVE }` or `{ action: REJECT, reason: string(≥10 chars) }` | 200 updated event; reject-without-reason → 422 |
-| `GET /admin/users` | admin; `?q?` | 200 `{ data: User[] }` |
-| `PATCH /admin/users/:id` | admin; `{ status: ACTIVE\|SUSPENDED }` | 200 updated user |
-| `GET /admin/bookings` | admin | 200 `{ data: Booking[] }` (all, with event + attendee) |
+| Method & path | Notes |
+|---|---|
+| `GET /admin/events?status=` | all events, filter ACTIVE/SUSPENDED/CANCELLED, paginated |
+| `PATCH /admin/events/:id/suspend` | `{ reason }` (required) → SUSPENDED; bookings preserved |
+| `PATCH /admin/events/:id/reactivate` | SUSPENDED → ACTIVE (cancelled → 409 `EVENT_TERMINAL`) |
+| `PATCH /admin/events/:id/cancel` | `{ reason }` (required) → CANCELLED (terminal) |
+| `GET /admin/users?q=` / `PATCH /admin/users/:id` | list/search; `{ status }` toggle (self-suspend blocked) |
+| `GET /admin/bookings` | all, paginated, with seats/lines |
 
-## Validation rules (mirror in Zod + Flask)
-- email: RFC-valid, ≤254, lowercase compare; password ≥8 chars; name 1–80.
-- event title 3–120; description 10–5000; capacity int 1–100000; `starts_at` future; `poster_url` valid http(s) if present; `price_inr` int ≥0; rejection reason ≥10 chars.
-- Rate-limit login (e.g. 10/min/IP) — backend concern, noted for completeness.
+## Validation rules (DRF serializers; Zod mirrors updated in frontend phase)
+- email RFC-valid ≤254, stored lowercase, unique; password ≥8 (Django validators +
+  zxcvbn-style minimum via `MinimumLengthValidator`; Argon2/bcrypt hasher — default
+  PBKDF2 acceptable, note hasher choice in backend README).
+- event title 3–120; description 10–5000; `starts_at` future on create, tz-aware;
+  poster valid http(s) if present; GA `capacity` 1–100000; RS ≥1 sellable seat;
+  prices ≥0 ints; reason ≥10 chars for suspend/cancel; GA quantity 1–10/line.

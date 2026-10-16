@@ -8,35 +8,36 @@
 5. `npx playwright test` (smoke → full) — journeys below.
 6. Manual: 360px + 1280px, keyboard-only, no horizontal overflow.
 
-## 2. Frontend tests (Vitest + Testing Library, mock provider)
-- T-01 Filter logic: keyword/category/city/date-preset combinators; weekend calc; past events excluded.
-- T-02 Availability: `left = capacity - booked`; sold-out flag; price label Free/₹.
-- T-03 Form validation: login/register/event schemas accept/reject cases (bad email, short pw, past date, capacity 0, reject-reason <10 chars).
-- T-04 Guards: `requireRole` matrix (guest/attendee/organizer/admin × routes) returns allow/login/403.
-- T-05 Booking flow: confirm success → ticket; 409 sold-out → error, no ticket; double-submit disabled.
-- T-06 Ownership: organizer A cannot edit/view organizer B event (403 in mock client).
-- T-07 Approval: approve → APPROVED + publicly listed; reject w/o reason blocked; with reason → REJECTED + reason persisted; resubmit → PENDING.
+## 2. Frontend tests (Vitest + Testing Library, mock provider) — legacy matrix kept green until retirement
+- T-01 Filter logic (kept): keyword/category/city/date-preset combinators; past events excluded.
+- T-02 Availability (updated in B5): per-mode remaining derivation; sold-out flag; price display Free/₹.
+- T-03 Form validation (extended in B5): login/register/invitation/event/layout schemas.
+- T-04 Guards: role matrix incl. invitation-accept and suspended-event visibility.
+- T-05 Booking flow (extended in B6): seat select/deselect, GA quantities, 409 paths, no ticket on failure.
+- T-06 Ownership: cross-organizer 403s (kept, re-verified live).
+- T-07 Lifecycle (replaces approval): ACTIVE publish on create; suspend blocks bookings; reactivate restores; cancel terminal; rejected-without-reason tests retired.
+- T-08 Invitations: token validation states, single-use, existing-email policy (B2).
 
-## 3. E2E (Playwright, mock mode) — maps to the 14 required acceptance scenarios
-| # | Scenario | Expect |
-|---|---|---|
-| E-01 | Guest browses approved events | cards render; pending hidden |
-| E-02 | Guest clicks Book Now | → `/login?next=...`, post-login returns |
-| E-03 | Attendee details → booking | ticket page with ticket ID |
-| E-04 | Full event | disabled Sold out; POST → readable error |
-| E-05 | Mock success ticket | shows demo-data badge |
-| E-06 | Failed booking | error shown, no ticket |
-| E-07 | Cross-user ticket URL | 403/404, no data leak |
-| E-08 | Organizer create+edit own | PENDING created; listed |
-| E-09 | Pending not public | direct URL → "under review" |
-| E-10 | Cross-organizer manage | 403 |
-| E-11 | Admin approve/reject | status transitions + queue updates |
-| E-12 | Rejected → resubmit | PENDING again |
-| E-13 | Mobile 360px | no horizontal overflow all pages |
-| E-14 | API error | readable feedback + retry |
+## 3. E2E (Playwright) — legacy 14-scenario suite stays green on mocks; extended in B6
+E-01..E-07, E-13, E-14 unchanged in meaning (status wording ACTIVE, not "approved").
+Retired: E-08 (PENDING create), E-09 (pending hidden), E-11 (approve/reject),
+E-12 (resubmit). Added: E-15 suspend/reactivate/cancel visibility; E-16 seat select →
+book → ticket with seats; E-17 GA quantity booking + sold-out; E-18 invitation
+accept (new + existing-attendee login flow); E-19 cancel releases inventory;
+E-20 organizer cannot touch another's event/inventory.
 
-## 4. Backend-integration tests (later, Flask/Pytest — noted only)
-Contract tests against live `/api/v1` (same cases, `USE_MOCK=false`): auth round-trip, capacity race (parallel booking → exactly ≤ capacity confirms), ownership enforcement, approval transitions. Playwright suite re-runnable with `PLAYWRIGHT_BASE_URL` + seeded Flask DB.
+## 4. Backend tests (pytest + pytest-django — the new source of truth)
+Per-app `test_*.py` + `tests/test_concurrency.py`. Must cover (brief §15):
+registration attendee-only; public organizer/admin creation blocked; auth +
+permission enforcement (incl. suspended login block); organizer ownership;
+invitation hashing/expiry/email-binding/single-use/existing-account policy;
+createsuperuser ADMIN bootstrap; ACTIVE-on-create; suspend/reactivate/cancel
+semantics + booking blocks; GA capacity + concurrency on last tickets
+(ThreadPoolExecutor parallel POSTs → exactly capacity confirms);
+seat double-book prevention; availability validation; cancel + inventory release;
+unique references; invalid layouts/quantities; rollback on failure; CSRF + CORS
+behavior; migration-from-zero green. Gates: `pytest -q` green, coverage of
+`bookings/` + `accounts/` invitation paths ≥90%.
 
 ## 5. Manual checklist (M6)
 Nav/roles render correctly; skeletons→content; empty states; dialogs trap focus; ticket prints legibly; `NEXT_PUBLIC_USE_MOCK=false` without backend shows honest error (never silent mock).
@@ -59,4 +60,4 @@ Nav/roles render correctly; skeletons→content; empty states; dialogs trap focu
 | E-13 360px no overflow, all MVP pages | `e2e/acceptance.spec.ts` (+ browse spot-check) |
 | E-14 readable errors | `e2e/acceptance.spec.ts` (auth, missing event/booking) |
 
-Vitest (37): format/availability, auth + event schemas, mock matrix — filters, booking 401/409/410/403, ownership, approval transitions, suspend-blocks-login. Known E2E limitation: approve→public visibility is asserted in Vitest only (public pages render server-side from a separate mock heap; see `specs/10-flask-handoff.md`).
+Vitest (37): format/availability, auth + event schemas, mock matrix — filters, booking 401/409/410/403, ownership, approval transitions, suspend-blocks-login. Known E2E limitation: approve→public visibility is asserted in Vitest only (public pages render server-side from a separate mock heap; see `specs/10-django-handoff.md`).

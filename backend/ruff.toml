@@ -1,0 +1,13 @@
+# Ruff config: default rules plus import sorting. RUF012 (mutable class attrs)
+# is ignored project-wide because Django models/Meta REQUIRE list literals
+# (ordering, constraints, REQUIRED_FIELDS) — flagging them is noise.
+[lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S"]
+ignore = ["E501", "RUF012"]
+
+[lint.per-file-ignores]
+# Generated files: keep hand-written standards, skip formatting dogma.
+"apps/*/migrations/*.py" = ["I"]
+# Tests use obvious fixture passwords; S106/S107 would only add noise.
+# S101 (assert) is the point of tests.
+"tests/*" = ["S101", "S106", "S107"]

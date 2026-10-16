@@ -7,10 +7,11 @@ District.in (search → filter → details → book → ticket). No payments: bo
 
 ```
 tideevent/
-  specs/                 # 00–10: overview, requirements, stories, criteria,
-                         # architecture, data model, API contract, design system,
-                         # implementation plan, test plan, Flask handoff
+  specs/                 # 00–11: overview, requirements, stories, criteria,
+                         # architecture, data model, DRF contract, design system,
+                         # implementation plan, test plan, Django handoff + backend plan
   frontend/              # Next.js App Router + TypeScript + Tailwind + mock API layer
+  backend/               # (planned) Django + DRF + PostgreSQL — see specs/11
 ```
 
 ## Quickstart (frontend)
@@ -38,12 +39,12 @@ npx playwright test          # chromium + mobile, needs `npm run dev` (auto-star
 ## Backend status
 
 No backend yet. The UI talks only to `lib/api/endpoints/*`, which serves typed mock
-data while `NEXT_PUBLIC_USE_MOCK=true` (default). Point at Flask later with:
+data while `NEXT_PUBLIC_USE_MOCK=true` (default). Point at Django later with:
 
 ```
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_USE_MOCK=false
 ```
 
-See `specs/06-api-contract.md` (endpoint contract) and `specs/10-flask-handoff.md`
-(what the Flask team must implement, in order).
+See `specs/06-api-contract.md` (DRF contract) and `specs/11-django-backend-plan.md`
+(backend build plan, awaiting approval).
