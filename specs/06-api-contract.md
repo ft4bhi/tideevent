@@ -57,10 +57,10 @@ Rate-limit login + invitation endpoints (e.g. AnonRateThrottle 10/min).
 ## Attendee bookings
 | Method & path | Notes |
 |---|---|
-| `POST /events/:id/bookings` | `{ seats: [seat_ids] }` (RS) or `{ items: [{ ticket_type_id, quantity 1–10 }] }` (GA); transactional; 201 `{ booking }`; 409 `EVENT_SOLD_OUT` / `SEAT_UNAVAILABLE` / `TICKETS_UNAVAILABLE`, 403 `EVENT_UNAVAILABLE` (suspended/cancelled) or `FORBIDDEN` (anonymous), 404 |
+| `POST /events/:id/bookings` | `{ seats: [seat_ids] }` (RS, deduped, sellable, same event) or `{ items: [{ ticket_type_id, quantity 1–10 }] }` (GA, repeat purchases allowed); `transaction.atomic` + `select_for_update`, reference collision-retry (≤3); 201 `{ booking }`; 409 `EVENT_SOLD_OUT` / `SEAT_UNAVAILABLE` / `TICKETS_UNAVAILABLE`, 403 `EVENT_UNAVAILABLE` (suspended/cancelled/**started**) or `FORBIDDEN` (anonymous), 404, 422 validation |
 | `GET /bookings/me` | own, paginated, with event summary + seats/lines |
 | `GET /bookings/:id` | owner / own-event organizer / admin; else 403 `BOOKING_FORBIDDEN`, 404 |
-| `POST /bookings/:id/cancel` | own CONFIRMED booking before `starts_at` → CANCELLED + inventory released; else 409 `BOOKING_NOT_CANCELLABLE` |
+| `POST /bookings/:id/cancel` | own CONFIRMED booking before `starts_at` → CANCELLED + inventory released; others' → 404; else 409 `BOOKING_NOT_CANCELLABLE` |
 
 ## Admin
 | Method & path | Notes |

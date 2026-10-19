@@ -2,6 +2,8 @@
 
 from django.urls import path
 
+from apps.bookings import views as booking_views
+
 from . import views
 
 urlpatterns = [
@@ -12,7 +14,8 @@ urlpatterns = [
          name="organizer-events"),
     path("organizer/events/<uuid:pk>", views.organizer_event_detail,
          name="organizer-event-detail"),
-    path("organizer/events/<uuid:pk>/bookings", views.organizer_event_bookings,
+    path("organizer/events/<uuid:pk>/bookings",
+         booking_views.organizer_event_bookings,
          name="organizer-event-bookings"),
     path("organizer/events/<uuid:pk>/sections", views.organizer_event_sections,
          name="organizer-event-sections"),

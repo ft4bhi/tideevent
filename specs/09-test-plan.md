@@ -30,7 +30,7 @@ E-20 organizer cannot touch another's event/inventory.
 Per-app `test_*.py` + `tests/test_concurrency.py`. Must cover (brief §15):
 registration attendee-only; public organizer/admin creation blocked; auth +
 permission enforcement (incl. suspended login block); organizer ownership;
-invitation hashing/expiry/email-binding/single-use/existing-account policy;
+invitation hashing/expiry/binding/single-use/existing-account policy;
 createsuperuser ADMIN bootstrap; ACTIVE-on-create; suspend/reactivate/cancel
 semantics + booking blocks; GA capacity + concurrency on last tickets
 (ThreadPoolExecutor parallel POSTs → exactly capacity confirms);
@@ -38,6 +38,21 @@ seat double-book prevention; availability validation; cancel + inventory release
 unique references; invalid layouts/quantities; rollback on failure; CSRF + CORS
 behavior; migration-from-zero green. Gates: `pytest -q` green, coverage of
 `bookings/` + `accounts/` invitation paths ≥90%.
+
+### PostgreSQL integration harness (milestone B3)
+- Opt-in only: `tests/test_postgres_*.py` run iff `TEST_POSTGRES_URL` is set,
+  otherwise `pytest.skip` (sqlite suite stays the default gate).
+- Target verification before any connection: parse the URL, print host/database
+  (never the password), and **refuse unless the database name ends with
+  `_test`** — this makes running against production (`neondb`) impossible by
+  construction. Owner prepares a scratch database (e.g. Neon branch `test` or
+  database `neondb_test`); the harness migrates it, runs, and leaves it (no
+  `--keepdb` semantics needed — Django test framework manages `test_` prefix?
+  No: harness uses the URL as-is with migrate+flush per session, documented).
+- Contents: final-seat race, final-GA-ticket race (parallel clients → exact
+  counts, single winner), `select_for_update` serialization without deadlocks.
+- SQLite results never prove row-locking; report PG results separately
+  (verified vs unverified).
 
 ## 5. Manual checklist (M6)
 Nav/roles render correctly; skeletons→content; empty states; dialogs trap focus; ticket prints legibly; `NEXT_PUBLIC_USE_MOCK=false` without backend shows honest error (never silent mock).

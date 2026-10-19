@@ -67,6 +67,18 @@ suspend/reactivate/cancel are admin-only with required reasons (cancel terminal,
 confirmed bookings exist (always unlocked until B3 adds bookings);
 `GET /organizer/events/:id/bookings` returns the empty envelope until B3.
 
+## Bookings (B3)
+
+One `Booking` (`TD-XXXXXX` reference, collision-retry) with `BookingSeat`
+(partial-unique active seat) or `BookingItem` (quantity 1–10) records.
+Every create/cancel runs in `transaction.atomic` with `select_for_update`
+on Event (+ TicketType / EventSeat rows); failures roll back with no partial
+rows. Cancel is owner-only (others get 404), allowed until event start, and
+releases inventory (`is_active=False` / derived capacity). GA repeat
+purchases allowed; suspended/cancelled/started events reject with
+`EVENT_UNAVAILABLE`. B2 inventory/mode locks activate automatically once
+confirmed bookings exist.
+
 ## Database (Neon)
 
 - App traffic: `DATABASE_URL` must be the **pooled** string (`-pooler` hostname),
@@ -81,9 +93,12 @@ confirmed bookings exist (always unlocked until B3 adds bookings);
 ## Tests & lint
 
 ```bash
-.venv/bin/pytest -q        # 57 tests: accounts, sessions/CSRF, invitations,
-                           # concurrency (sqlite) + production-safety subprocess
+.venv/bin/pytest -q        # 73 tests + 3 PG-gated skips: accounts, sessions/CSRF,
+                           # invitations, events/inventory, bookings, lifecycle
 .venv/bin/ruff check .
+# PostgreSQL row-lock proof (owner runs against a scratch *_test database):
+# TEST_POSTGRES_URL='postgresql://USER:PASSWORD@HOST/dbname_test?sslmode=require' \
+#   .venv/bin/pytest -q tests/test_postgres_concurrency.py
 ```
 
 Notes: invitation concurrency uses threads + retry-on-lock; SQLite validates the

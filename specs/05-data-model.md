@@ -102,7 +102,15 @@ RS `capacity/seats counts`; `starting_price_inr` = min section/ticket-type price
   PROTECT, `quantity` 1–10 per line. Availability = `quantity_total − Σ confirmed qty`.
 - Cancellation: attendee-owned CONFIRMED booking before `starts_at` → CANCELLED +
   `cancelled_at`; seats `is_active=False`; GA capacity returns automatically
-  (derived). No refunds (no payments).
+  (derived). No refunds (no payments). Cancel of others' bookings → 404 (no
+  existence oracle); cancel of non-cancellable (already cancelled, past start)
+  → 409 `BOOKING_NOT_CANCELLABLE`.
+- Booking guards: SUSPENDED/CANCELLED or already-started events reject with 403
+  `EVENT_UNAVAILABLE` (no inventory is touched); GA repeat purchases allowed
+  (new booking per request, ≤10/request); RS duplicates collapse to
+  `SEAT_UNAVAILABLE`.
+- References: `TD-` + 6 hex chars; generate-then-check with whole-transaction
+  retry (≤3) on unique collision; seat-race IntegrityErrors re-validate to 409.
 
 ## 7. Relationships & integrity summary
 - User 1—N Event (`organizer`, PROTECT); User 1—N Booking (PROTECT); Event 1—N

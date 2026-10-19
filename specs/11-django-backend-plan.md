@@ -64,10 +64,17 @@ inventory locks after bookings; template instantiation; visibility matrix;
 invalid layouts.
 Acceptance: organizer creates RS + GA events ACTIVE; public sees availability.
 
-## Phase B3 — Bookings + concurrency (highest risk)
+## Phase B3 — Bookings + concurrency (highest risk) [COMPLETE — awaiting review]
+Delivered: Booking/BookingSeat(partial-unique)/BookingItem models + migration;
+atomic RS/GA create with locks, reference retry, cancel + release; organizer
+bookings populated; B2 locks live. Gates green: check, migrate, pytest 73 +
+3 PG-skipped, ruff clean. PG row-lock proof UNVERIFIED locally (no test DB
+available): harness `tests/test_postgres_concurrency.py` runs on
+`TEST_POSTGRES_URL` (refuses non-`*_test` targets); owner runbook in README.
+No frontend changes; no Neon writes.
 Deliverables: Booking/BookingSeat/BookingItem, atomic book endpoints (both modes),
-partial-unique active seat, cancel + release, reference generator, custom error
-envelope handler, throttles.
+partial-unique active seat, cancel + release, reference generator with retry,
+organizer bookings populated (envelope handler + throttles already landed in B1).
 Files: `apps/bookings/*`, `tests/test_concurrency.py` (ThreadPoolExecutor races:
 last GA tickets → exactly capacity confirms; same seat twice → 1×201 + 1×409).
 Migrations: `bookings/0001_initial`.

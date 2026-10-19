@@ -175,14 +175,6 @@ def organizer_event_detail(request, pk):
     return Response(EventDetailSerializer(event).data)
 
 
-@api_view(["GET"])
-@permission_classes([IsOrganizerRole])
-def organizer_event_bookings(request, pk):
-    _owned_event(pk, request.user)
-    # B3 returns real bookings; B2 reports the (empty) shape honestly.
-    return Response({"data": [], "meta": {"total": 0, "page": 1, "per_page": 20}})
-
-
 def _replace_sections(event, sections_data):
     from .serializers import SectionInputSerializer
 
