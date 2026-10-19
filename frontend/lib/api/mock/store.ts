@@ -54,14 +54,15 @@ class MockStore {
   users = clone(seedUsers);
   events = clone(seedEvents);
   bookings = clone(seedBookings);
-  currentUserId: string | null = seedUsers[0].id; // demo: signed in as attendee
+  /** No implicit session: the app starts signed out unless a test or the user acts. */
+  currentUserId: string | null = null;
   ticketSeq = 100;
 
   reset() {
     this.users = clone(seedUsers);
     this.events = clone(seedEvents);
     this.bookings = clone(seedBookings);
-    this.currentUserId = seedUsers[0].id;
+    this.currentUserId = null;
     if (typeof window !== "undefined") {
       try {
         window.sessionStorage.removeItem(MOCK_SESSION_KEY);
@@ -85,7 +86,9 @@ const MOCK_SESSION_KEY = "tideevent.mock.session";
 const MOCK_DB_KEY = "tideevent.mock.db";
 const MOCK_DB_VERSION = 1;
 
-/** Persist the whole mock DB so demo data (accounts, bookings, events) survives reloads. */
+/** Persist the mock DB (accounts, bookings, events) so demo data survives reloads.
+ * Credentials are deliberately excluded: plaintext passwords are never written
+ * to browser storage. Passwords live only in memory for the current tab. */
 function saveDb() {
   if (typeof window === "undefined") return;
   try {
@@ -97,7 +100,6 @@ function saveDb() {
         events: mockStore.events,
         bookings: mockStore.bookings,
         ticketSeq: mockStore.ticketSeq,
-        passwords: mockPasswords,
       }),
     );
   } catch {
@@ -116,14 +118,12 @@ function loadDb() {
       events?: EventItem[];
       bookings?: Booking[];
       ticketSeq?: number;
-      passwords?: Record<string, string>;
     };
     if (db.version !== MOCK_DB_VERSION) return;
     if (Array.isArray(db.users)) mockStore.users = db.users;
     if (Array.isArray(db.events)) mockStore.events = db.events;
     if (Array.isArray(db.bookings)) mockStore.bookings = db.bookings;
     if (typeof db.ticketSeq === "number") mockStore.ticketSeq = db.ticketSeq;
-    if (db.passwords) Object.assign(mockPasswords, db.passwords);
   } catch {
     /* corrupt snapshot — fall back to seeds */
   }

@@ -2,12 +2,9 @@ import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { isMockMode } from "@/lib/api/client";
 import { formatDateTime } from "@/lib/utils/format";
 import type { Booking } from "@/types/domain";
-
-function isMock(): boolean {
-  return process.env.NEXT_PUBLIC_USE_MOCK !== "false";
-}
 
 export function TicketCard({ booking }: { booking: Booking }) {
   const cancelled = booking.status === "CANCELLED";
@@ -17,9 +14,9 @@ export function TicketCard({ booking }: { booking: Booking }) {
         <p className="font-mono text-lg font-bold tracking-wider">{booking.ticket_id}</p>
         <Badge tone={cancelled ? "CANCELLED" : "CONFIRMED"}>{booking.status}</Badge>
       </div>
-      {isMock() && (
+      {isMockMode() && (
         <p className="bg-amber-50 px-5 py-2 text-center text-xs font-semibold text-amber-800">
-          Demonstration data — no real seat was reserved.
+          Development mock booking — no real seat was reserved.
         </p>
       )}
       <div className="flex flex-col gap-2 p-5">

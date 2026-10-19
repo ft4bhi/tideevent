@@ -1,12 +1,32 @@
 import { ApiError } from "@/lib/api/errors";
 
+const DEFAULT_API_BASE_URL = "http://localhost:8000/api/v1";
+
 export function apiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api/v1";
+  return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 }
 
-/** Mock mode is explicit (default ON until backend exists). Never silently fall back. */
+let productionMockWarned = false;
+
+/**
+ * Single source of truth for mock mode. Mock data is a development/test
+ * opt-in: it requires the exact string "true" and is never available in a
+ * production build, even if the flag is set there. Absent or invalid values
+ * mean real API mode — we never fall back to mock silently.
+ */
 export function isMockMode(): boolean {
-  return process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+  const flag = process.env.NEXT_PUBLIC_USE_MOCK;
+  if (process.env.NODE_ENV === "production") {
+    if (flag === "true" && !productionMockWarned) {
+      productionMockWarned = true;
+      console.error(
+        "[TideEvent] NEXT_PUBLIC_USE_MOCK=true is set but ignored in this production build. " +
+          "Mock data is development-only; the app is using the real API.",
+      );
+    }
+    return false;
+  }
+  return flag === "true";
 }
 
 interface ApiEnvelope<T> {

@@ -31,10 +31,6 @@ export default function LoginPage({
           <LoginShell searchParams={searchParams} />
         </Suspense>
       </Card>
-      <p className="text-xs text-[#687386]">
-        Demo accounts — attendee: attendee@example.com / attendee123 · organizer:
-        organizer@example.com / organizer123 · admin: admin@example.com / admin12345
-      </p>
     </div>
   );
 }

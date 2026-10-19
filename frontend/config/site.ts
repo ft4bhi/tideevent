@@ -44,5 +44,4 @@ export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
 export const SITE = {
   name: "TideEvent",
   tagline: "Discover events around you. Book in seconds.",
-  demoNote: "Demo project — no payments involved.",
 } as const;

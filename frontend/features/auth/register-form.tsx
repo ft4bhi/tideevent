@@ -45,7 +45,7 @@ export function RegisterForm({ next }: { next: string }) {
         </Alert>
       )}
       <FormField label="Full name" htmlFor="register-name" error={errors.name?.message}>
-        <Input id="register-name" autoComplete="name" placeholder="Aarav Sharma" {...register("name")} />
+        <Input id="register-name" autoComplete="name" placeholder="Your full name" {...register("name")} />
       </FormField>
       <FormField label="Email" htmlFor="register-email" error={errors.email?.message}>
         <Input

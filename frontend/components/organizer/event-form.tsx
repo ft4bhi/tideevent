@@ -85,7 +85,7 @@ export function EventForm({
       {savedNote && <Alert tone="success">{savedNote}</Alert>}
 
       <FormField label="Title" htmlFor="event-title" error={errors.title?.message}>
-        <Input id="event-title" placeholder="Monsoon Jazz Night" {...register("title")} />
+        <Input id="event-title" placeholder="Summer Music Night" {...register("title")} />
       </FormField>
 
       <FormField label="Description" htmlFor="event-description" error={errors.description?.message}>
@@ -124,7 +124,7 @@ export function EventForm({
           <Input id="event-starts" type="datetime-local" {...register("starts_at")} />
         </FormField>
         <FormField label="Venue" htmlFor="event-location" error={errors.location?.message}>
-          <Input id="event-location" placeholder="NCPA Lawns, Nariman Point" {...register("location")} />
+          <Input id="event-location" placeholder="City Amphitheatre" {...register("location")} />
         </FormField>
       </div>
 

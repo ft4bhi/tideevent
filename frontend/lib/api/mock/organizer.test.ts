@@ -42,6 +42,7 @@ beforeEach(() => {
 
 describe("mock organizer flow (T-06)", () => {
   it("attendees cannot create events (403)", async () => {
+    await mockLogin("attendee@example.com", "attendee123");
     expect(await codeOf(mockCreateEvent({ ...draft }))).toBe("FORBIDDEN");
   });
 

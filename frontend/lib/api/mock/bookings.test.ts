@@ -28,7 +28,12 @@ beforeEach(() => {
 });
 
 describe("mock booking flow (T-05)", () => {
-  it("confirms a booking with a unique ticket ID (default session is the attendee)", async () => {
+  it("starts signed out — no implicit attendee session", async () => {
+    expect(await codeOf(mockMyBookings())).toBe("UNAUTHENTICATED");
+  });
+
+  it("confirms a booking with a unique ticket ID once the attendee signs in", async () => {
+    await mockLogin("attendee@example.com", "attendee123");
     // Shakespeare has no seed booking for the attendee
     const b = await mockBook("e5e5e5e5-e5e5-45e5-85e5-e5e5e5e5e5e5");
     expect(b.status).toBe("CONFIRMED");
@@ -60,6 +65,7 @@ describe("mock booking flow (T-05)", () => {
   it("hides other users' bookings (403) without leaking data", async () => {
     // Attendee books Shakespeare; an unrelated organizer must not see it.
     // (The seed organizer owns all seed events, so use a fresh organizer.)
+    await mockLogin("attendee@example.com", "attendee123");
     const mine = await mockBook("e5e5e5e5-e5e5-45e5-85e5-e5e5e5e5e5e5");
     await mockRegister({
       name: "Other Org",

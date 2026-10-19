@@ -1,12 +1,14 @@
 import Link from "next/link";
+import { isMockMode } from "@/lib/api/client";
 
+/** Development-only indicator. Hidden in production and whenever the real API is active. */
 export function MockBanner() {
-  if (process.env.NEXT_PUBLIC_USE_MOCK === "false") return null;
+  if (!isMockMode()) return null;
   return (
     <p className="bg-[#202B3C] px-4 py-2 text-center text-xs font-medium text-white">
-      Demonstration data — backend not connected.{" "}
+      Development mock data — not the live API.{" "}
       <Link href="/events" className="underline underline-offset-2">
-        Browse demo events
+        Browse mock events
       </Link>
     </p>
   );

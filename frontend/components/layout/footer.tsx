@@ -9,7 +9,7 @@ export function Footer() {
       <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:justify-between">
         <div>
           <p className="font-bold text-[#202B3C]">{SITE.name}</p>
-          <p className="mt-1 max-w-xs text-sm text-[#687386]">{SITE.demoNote}</p>
+          <p className="mt-1 max-w-xs text-sm text-[#687386]">{SITE.tagline}</p>
         </div>
         <nav aria-label="Categories" className="flex flex-wrap gap-x-4 gap-y-2">
           {CATEGORIES.map((c) => (
