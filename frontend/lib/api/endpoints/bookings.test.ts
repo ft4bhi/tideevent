@@ -14,6 +14,7 @@ function clearCsrfCookie() {
 
 const BOOKING = {
   id: "b1",
+  ticket_token: "b1-token-abc123",
   user_id: "u1",
   event_id: "e1",
   ticket_id: "TD-ABC123",
@@ -141,6 +142,35 @@ describe("bookEvent live payload", () => {
       code: "VALIDATION_ERROR",
       status: 422,
       fields: { items: "This field is required." },
+    });
+  });
+});
+
+describe("getBookingByToken live payload", () => {
+  it("fetches booking by token from /tickets/:token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(BOOKING));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getBookingByToken } = await import("@/lib/api/endpoints/bookings");
+    const booking = await getBookingByToken("b1-token-abc123");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/tickets/b1-token-abc123");
+    expect(init.method).toBe("GET");
+    expect(init.credentials).toBe("include");
+    expect(booking).toEqual(BOOKING);
+  });
+
+  it("returns 404 for unknown token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ error: { code: "BOOKING_NOT_FOUND", message: "Booking not found." } }, 404)
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getBookingByToken } = await import("@/lib/api/endpoints/bookings");
+    await expect(getBookingByToken("unknown-token")).rejects.toMatchObject({
+      code: "BOOKING_NOT_FOUND",
+      status: 404,
     });
   });
 });

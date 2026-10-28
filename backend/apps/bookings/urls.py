@@ -11,4 +11,5 @@ urlpatterns = [
     path("bookings/<uuid:pk>", views.booking_detail, name="booking-detail"),
     path("bookings/<uuid:pk>/cancel", views.booking_cancel,
          name="booking-cancel"),
+    path("tickets/<str:token>", views.ticket_by_token, name="ticket-by-token"),
 ]

@@ -186,6 +186,7 @@ export const seedEvents: EventItem[] = [
 export const seedBookings: Booking[] = [
   {
     id: "d0000000-0000-4000-8000-000000000001",
+    ticket_token: "d0000000-0000-4000-8000-000000000001-token",
     user_id: seedUsers[0].id,
     event_id: seedEvents[0].id,
     ticket_id: "TD-7F3K2A",
@@ -203,6 +204,7 @@ export const seedBookings: Booking[] = [
   },
   {
     id: "d0000000-0000-4000-8000-000000000002",
+    ticket_token: "d0000000-0000-4000-8000-000000000002-token",
     user_id: seedUsers[0].id,
     event_id: seedEvents[2].id,
     ticket_id: "TD-9Q2M4Z",
@@ -220,6 +222,7 @@ export const seedBookings: Booking[] = [
   },
   {
     id: "d0000000-0000-4000-8000-000000000003",
+    ticket_token: "d0000000-0000-4000-8000-000000000003-token",
     user_id: seedUsers[0].id,
     event_id: seedEvents[3].id,
     ticket_id: "TD-3H8T1W",

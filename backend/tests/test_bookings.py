@@ -399,3 +399,67 @@ def test_inventory_locked_once_booked(org_client, attendee_client):
                            {"title": "Still editable"}, format="json")
     assert res.status_code == 200
     assert res.json()["title"] == "Still editable"
+
+
+# -------------------------------------------------------- ticket token ----
+
+def test_ticket_token_public_lookup(org_client, attendee_client):
+    """Public QR-scan token lookup returns ticket-facing fields without auth."""
+    event = make_ga_event(org_client)
+    tid = _type_id(event)
+    res = attendee_client.post(f"/api/v1/events/{event['id']}/bookings",
+                               {"items": [{"ticket_type_id": tid, "quantity": 1}]},
+                               format="json")
+    assert res.status_code == 201
+    body = res.json()
+    assert "ticket_token" in body
+    token = body["ticket_token"]
+    assert len(token) > 0
+
+    # Public lookup (no auth)
+    anon = APIClient()
+    res = anon.get(f"/api/v1/tickets/{token}")
+    assert res.status_code == 200, res.content
+    ticket_body = res.json()
+    assert ticket_body["reference"] == body["reference"]
+    assert ticket_body["status"] == "CONFIRMED"
+    assert ticket_body["event"]["title"] == event["title"]
+    assert ticket_body["event"]["location"] == event["location"]
+    assert ticket_body["event"]["starts_at"] == event["starts_at"]
+
+
+def test_ticket_token_unknown_404():
+    """Unknown token returns 404."""
+    anon = APIClient()
+    res = anon.get("/api/v1/tickets/nonexistent-token")
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "BOOKING_NOT_FOUND"
+
+
+def test_ticket_token_cancelled_404(org_client, attendee_client):
+    """Cancelled booking token returns 404 (no reactivation via QR)."""
+    event = make_ga_event(org_client)
+    tid = _type_id(event)
+    res = attendee_client.post(f"/api/v1/events/{event['id']}/bookings",
+                               {"items": [{"ticket_type_id": tid, "quantity": 1}]},
+                               format="json")
+    assert res.status_code == 201
+    token = res.json()["ticket_token"]
+
+    # Cancel the booking via admin
+    if not User.objects.filter(email="admin@example.com").exists():
+        User.objects.create_superuser(email="admin@example.com", name="Admin",
+                                      password="admin12345")
+    admin = APIClient()
+    admin.post("/api/v1/auth/login",
+               {"email": "admin@example.com", "password": "admin12345"})
+    booking_id = res.json()["id"]
+    res = admin.post(f"/api/v1/bookings/{booking_id}/cancel")
+    assert res.status_code == 200
+    assert res.json()["status"] == "CANCELLED"
+
+    # Token lookup should now return 404
+    anon = APIClient()
+    res = anon.get(f"/api/v1/tickets/{token}")
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "BOOKING_NOT_FOUND"

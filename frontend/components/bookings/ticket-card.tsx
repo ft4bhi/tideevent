@@ -2,12 +2,16 @@ import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { isMockMode } from "@/lib/api/client";
+import { QRCodeBadge } from "@/components/bookings/qr-code";
+import { frontendBaseUrl, isMockMode } from "@/lib/api/client";
 import { formatDateTime } from "@/lib/utils/format";
 import type { Booking } from "@/types/domain";
 
 export function TicketCard({ booking }: { booking: Booking }) {
   const cancelled = booking.status === "CANCELLED";
+  const ticketUrl = booking.ticket_token
+    ? `${frontendBaseUrl()}/tickets/${booking.ticket_token}`
+    : "";
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 bg-[#202B3C] px-5 py-3 text-white">
@@ -44,6 +48,11 @@ export function TicketCard({ booking }: { booking: Booking }) {
             <dd className="font-medium text-[#202B3C]">{formatDateTime(booking.booked_at)}</dd>
           </div>
         </dl>
+        {ticketUrl && booking.status === "CONFIRMED" && (
+          <div className="mt-4">
+            <QRCodeBadge value={ticketUrl} />
+          </div>
+        )}
         <div className="mt-2 flex gap-2">
           <Link
             href="/my-bookings"

@@ -3,6 +3,7 @@ import { ApiError } from "@/lib/api/errors";
 import {
   mockBook,
   mockGetBooking,
+  mockGetBookingByToken,
   mockLogin,
   mockLogout,
   mockMyBookings,
@@ -74,6 +75,34 @@ describe("mock booking flow (T-05)", () => {
       role: "ORGANIZER",
     });
     expect(await codeOf(mockGetBooking(mine.id))).toBe("BOOKING_FORBIDDEN");
+  });
+
+  it("public token lookup returns confirmed booking", async () => {
+    await mockLogin("attendee@example.com", "attendee123");
+    const mine = await mockBook("e5e5e5e5-e5e5-45e5-85e5-e5e5e5e5e5e5");
+    expect(mine.ticket_token).toBeTruthy();
+
+    const publicBooking = await mockGetBookingByToken(mine.ticket_token!);
+    expect(publicBooking.ticket_token).toBe(mine.ticket_token);
+    expect(publicBooking.status).toBe("CONFIRMED");
+  });
+
+  it("public token lookup returns 404 for unknown token", async () => {
+    await expect(mockGetBookingByToken("unknown-token")).rejects.toMatchObject({
+      code: "BOOKING_NOT_FOUND",
+      status: 404,
+    });
+  });
+
+  it("public token lookup returns 404 for cancelled booking", async () => {
+    await mockLogin("attendee@example.com", "attendee123");
+    const cancelled = mockStore.bookings.find((b) => b.status === "CANCELLED");
+    if (cancelled?.ticket_token) {
+      await expect(mockGetBookingByToken(cancelled.ticket_token)).rejects.toMatchObject({
+        code: "BOOKING_NOT_FOUND",
+        status: 404,
+      });
+    }
   });
 });
 

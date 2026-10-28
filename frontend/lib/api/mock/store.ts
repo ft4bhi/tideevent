@@ -250,6 +250,7 @@ export async function mockBook(eventId: string): Promise<Booking> {
   e.booked_count += 1;
   const booking: Booking = {
     id: crypto.randomUUID(),
+    ticket_token: crypto.randomUUID(),
     user_id: me.id,
     event_id: e.id,
     ticket_id: `TD-${(++mockStore.ticketSeq).toString(36).toUpperCase().padStart(6, "0")}`,
@@ -280,6 +281,17 @@ export async function mockGetBooking(id: string): Promise<Booking> {
   const allowed =
     me && (b.user_id === me.id || me.role === "ADMIN" || (e && e.organizer_id === me.id));
   if (!allowed) throw new ApiError("BOOKING_FORBIDDEN", "You cannot view this booking.", 403);
+  return clone({ ...b, event: e ? eventSummary(e) : b.event });
+}
+
+export async function mockGetBookingByToken(token: string): Promise<Booking> {
+  await delay(150);
+  const me = mockSessionUser();
+  const b = mockStore.bookings.find((x) => x.ticket_token === token);
+  if (!b) throw new ApiError("BOOKING_NOT_FOUND", "Booking not found.", 404);
+  const e = mockStore.events.find((x) => x.id === b.event_id);
+  // Public token lookup: no auth required, but only CONFIRMED bookings are scannable.
+  if (b.status !== "CONFIRMED") throw new ApiError("BOOKING_NOT_FOUND", "Booking not found.", 404);
   return clone({ ...b, event: e ? eventSummary(e) : b.event });
 }
 

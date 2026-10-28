@@ -6,6 +6,18 @@ export function apiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 }
 
+/**
+ * Public frontend origin for absolute ticket URLs (QR codes, share links).
+ * Defaults to http://localhost:3000 in development. Set NEXT_PUBLIC_FRONTEND_URL
+ * in production (e.g. https://ticevent.example.com).
+ */
+export function frontendBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_FRONTEND_URL ?? "http://localhost:3000";
+}
+
 let productionMockWarned = false;
 
 /**

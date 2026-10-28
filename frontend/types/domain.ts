@@ -43,6 +43,7 @@ export interface EventItem {
 
 export interface Booking {
   id: string;
+  ticket_token?: string;
   user_id: string;
   event_id: string;
   ticket_id: string;

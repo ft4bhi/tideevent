@@ -62,7 +62,7 @@ export function BookingConfirm({ event }: { event: EventItem }) {
 
     try {
       const booking = await bookEvent(event.id, body);
-      router.push(`/bookings/${booking.id}`);
+      router.push(`/tickets/${booking.ticket_token}`);
       router.refresh();
     } catch (err) {
       setPending(false);

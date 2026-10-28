@@ -1,6 +1,11 @@
 import { apiFetch, isMockMode } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import { mockBook, mockGetBooking, mockMyBookings } from "@/lib/api/mock/store";
+import {
+  mockBook,
+  mockGetBooking,
+  mockGetBookingByToken,
+  mockMyBookings,
+} from "@/lib/api/mock/store";
 import type { Booking } from "@/types/domain";
 
 export type BookingCreateInput = {
@@ -31,4 +36,9 @@ export async function myBookings(): Promise<Booking[]> {
 export async function getBooking(id: string): Promise<Booking> {
   if (isMockMode()) return mockGetBooking(id);
   return apiFetch<Booking>(`/bookings/${id}`);
+}
+
+export async function getBookingByToken(token: string): Promise<Booking> {
+  if (isMockMode()) return mockGetBookingByToken(token);
+  return apiFetch<Booking>(`/tickets/${token}`);
 }

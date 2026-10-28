@@ -18,6 +18,9 @@ class Booking(models.Model):
         CANCELLED = "CANCELLED", "Cancelled"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket_token = models.CharField(
+        max_length=64, unique=True, blank=True, help_text="Public QR-scan token"
+    )
     user = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="bookings"
     )

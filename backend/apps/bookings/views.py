@@ -11,7 +11,7 @@ from apps.events.models import Event
 
 from .exceptions import BookingForbiddenError, BookingNotFoundError
 from .models import Booking, BookingItem, BookingSeat
-from .serializers import BookingSerializer, cancel_booking, create_booking
+from .serializers import BookingSerializer, TicketSerializer, cancel_booking, create_booking
 
 
 def _get_event_or_404(pk) -> Event:
@@ -90,6 +90,23 @@ def booking_cancel(request, pk):
         raise BookingNotFoundError() from None
     booking = cancel_booking(request.user, booking)
     return Response(_serialize_booking(booking))
+
+
+@api_view(["GET"])
+def ticket_by_token(request, token):
+    """Public ticket lookup by QR-scan token. No authentication required.
+    Returns ticket-facing fields only; no personal attendee data.
+    Cancelled bookings are not scannable via public token."""
+    try:
+        booking = Booking.objects.select_related("event").prefetch_related(
+            Prefetch("seats", queryset=BookingSeat.objects.select_related(
+                "seat__row__section")),
+            Prefetch("items", queryset=BookingItem.objects.select_related(
+                "ticket_type")),
+        ).get(ticket_token=token, status=Booking.Status.CONFIRMED)
+    except Booking.DoesNotExist:
+        raise BookingNotFoundError() from None
+    return Response(TicketSerializer(booking).data)
 
 
 @api_view(["GET"])

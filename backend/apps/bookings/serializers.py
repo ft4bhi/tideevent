@@ -1,5 +1,6 @@
 """Booking serializers: read shapes + strict write validation (specs/06)."""
 
+import secrets
 import uuid
 
 from django.db import IntegrityError, transaction
@@ -67,8 +68,9 @@ class BookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ("id", "reference", "status", "event", "attendee", "seats",
-                  "items", "total_inr", "booked_at", "cancelled_at")
+        fields = ("id", "ticket_token", "reference", "status", "event",
+                  "attendee", "seats", "items", "total_inr", "booked_at",
+                  "cancelled_at")
 
     def get_event(self, booking) -> dict:
         event = booking.event
@@ -78,6 +80,39 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def get_attendee(self, booking) -> dict:
         return {"name": booking.user.name, "email": booking.user.email}
+
+    def get_seats(self, booking) -> list:
+        qs = booking.seats.filter(is_active=True).select_related(
+            "seat__row__section")
+        return BookingSeatSerializer(qs, many=True).data
+
+    def get_items(self, booking) -> list:
+        qs = booking.items.select_related("ticket_type")
+        return BookingItemSerializer(qs, many=True).data
+
+    def get_total_inr(self, booking) -> int:
+        return booking.total_inr()
+
+
+class TicketSerializer(serializers.Serializer):
+    """Public read-only serializer for QR-scan ticket lookup.
+    Exposes only ticket-facing fields; no personal attendee data."""
+    reference = serializers.CharField(source="reference")
+    status = serializers.CharField(source="status")
+    booked_at = serializers.DateTimeField(source="booked_at")
+    event = serializers.SerializerMethodField()
+    seats = serializers.SerializerMethodField()
+    items = serializers.SerializerMethodField()
+    total_inr = serializers.SerializerMethodField()
+
+    def get_event(self, booking) -> dict:
+        event = booking.event
+        return {
+            "id": str(event.id),
+            "title": event.title,
+            "starts_at": event.starts_at,
+            "location": event.location,
+        }
 
     def get_seats(self, booking) -> list:
         qs = booking.seats.filter(is_active=True).select_related(
@@ -157,7 +192,9 @@ def _create_reserved_booking(user, event, seat_ids) -> Booking:
     if taken:
         raise SeatUnavailableError()
     booking = Booking.objects.create(
-        user=user, event=locked_event, reference=generate_reference())
+        user=user, event=locked_event, reference=generate_reference(),
+        ticket_token=secrets.token_urlsafe(32),
+    )
     BookingSeat.objects.bulk_create(
         [BookingSeat(booking=booking, seat=seat) for seat in seats])
     return booking
@@ -181,7 +218,9 @@ def _create_ga_booking(user, event, items) -> Booking:
         if ticket_type.remaining() < wanted[ticket_type.id]:
             raise TicketsUnavailableError()
     booking = Booking.objects.create(
-        user=user, event=locked_event, reference=generate_reference())
+        user=user, event=locked_event, reference=generate_reference(),
+        ticket_token=secrets.token_urlsafe(32),
+    )
     BookingItem.objects.bulk_create([
         BookingItem(booking=booking, ticket_type=ticket_type,
                     quantity=wanted[ticket_type.id])

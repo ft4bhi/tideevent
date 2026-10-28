@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, cleanup, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import { BookingsList } from "@/components/bookings/bookings-list";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -17,6 +17,7 @@ function clearCsrfCookie() {
 const BOOKINGS = [
   {
     id: "b1",
+    ticket_token: "b1-token-abc123",
     user_id: "u1",
     event_id: "e1",
     ticket_id: "TD-ABC123",
@@ -28,6 +29,7 @@ const BOOKINGS = [
   },
   {
     id: "b2",
+    ticket_token: "b2-token-def456",
     user_id: "u1",
     event_id: "e2",
     ticket_id: "TD-XYZ789",
@@ -70,6 +72,16 @@ describe("BookingsList with live API", () => {
     expect(screen.getByText("TD-XYZ789")).toBeInTheDocument();
     expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
     expect(screen.getByText("CANCELLED")).toBeInTheDocument();
+  });
+
+  it("renders QR code for confirmed bookings but not cancelled ones", async () => {
+    const paged = { data: BOOKINGS, meta: { total: BOOKINGS.length, page: 1, per_page: 20 } };
+    stubFetch(jsonResponse(paged));
+    render(<BookingsList />);
+
+    await screen.findByText("Jazz Night");
+    // QR code renders an SVG element for confirmed bookings
+    expect(screen.getAllByRole("img", { name: /qr code/i })).toHaveLength(1);
   });
 
   it("renders empty state when there are no bookings", async () => {

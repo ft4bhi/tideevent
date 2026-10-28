@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QRCodeBadge } from "@/components/bookings/qr-code";
+import { frontendBaseUrl } from "@/lib/api/client";
 import { myBookings } from "@/lib/api/endpoints/bookings";
 import { toMessage } from "@/lib/api/errors";
 import { formatDateTime } from "@/lib/utils/format";
@@ -69,25 +71,33 @@ export function BookingsList() {
 
   return (
     <ul className="flex flex-col gap-3">
-      {bookings.map((b) => (
-        <li key={b.id}>
-          <Link
-            href={`/bookings/${b.id}`}
-            className="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B95F43]"
-          >
-            <Card className="flex items-center justify-between gap-3 p-4 hover:border-[#B95F43]">
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-[#202B3C]">{b.event?.title}</p>
-                <p className="truncate text-sm text-[#687386]">
-                  {b.event ? formatDateTime(b.event.starts_at) : ""} · {b.event?.location}
-                </p>
-                <p className="mt-1 font-mono text-xs text-[#687386]">{b.ticket_id}</p>
-              </div>
-              <Badge tone={b.status === "CONFIRMED" ? "CONFIRMED" : "CANCELLED"}>{b.status}</Badge>
-            </Card>
-          </Link>
-        </li>
-      ))}
+      {bookings.map((b) => {
+        const ticketUrl = b.ticket_token
+          ? `${frontendBaseUrl()}/tickets/${b.ticket_token}`
+          : "";
+        return (
+          <li key={b.id}>
+            <Link
+              href={`/bookings/${b.id}`}
+              className="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B95F43]"
+            >
+              <Card className="flex flex-col gap-2 p-4 hover:border-[#B95F43]">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-[#202B3C]">{b.event?.title}</p>
+                  <p className="truncate text-sm text-[#687386]">
+                    {b.event ? formatDateTime(b.event.starts_at) : ""} · {b.event?.location}
+                  </p>
+                  <p className="mt-1 font-mono text-xs text-[#687386]">{b.ticket_id}</p>
+                </div>
+                <Badge tone={b.status === "CONFIRMED" ? "CONFIRMED" : "CANCELLED"}>{b.status}</Badge>
+                {ticketUrl && b.status === "CONFIRMED" && (
+                  <QRCodeBadge value={ticketUrl} size={80} />
+                )}
+              </Card>
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }
