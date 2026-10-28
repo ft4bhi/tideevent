@@ -22,7 +22,8 @@ export function formatDate(iso: string): string {
   }).format(d);
 }
 
-export function priceLabel(priceInr: number): string {
+export function priceLabel(priceInr: number | undefined | null): string {
+  if (priceInr === undefined || priceInr === null) return "Price unavailable";
   if (priceInr === 0) return "Free";
   return `₹${priceInr.toLocaleString("en-IN")}`;
 }

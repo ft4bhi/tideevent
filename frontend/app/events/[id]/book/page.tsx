@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -12,9 +13,11 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+const getEventCached = cache(getEvent);
+
 export async function generateMetadata({ params }: Props) {
   try {
-    const event = await getEvent((await params).id);
+    const event = await getEventCached((await params).id);
     return { title: `Book · ${event.title}` };
   } catch {
     return { title: "Book event" };
@@ -41,7 +44,7 @@ async function BookShell({ params }: Props) {
   let event: Awaited<ReturnType<typeof getEvent>> | null = null;
   let error: string | null = null;
   try {
-    event = await getEvent(id);
+    event = await getEventCached(id);
   } catch (err) {
     if (isApiError(err) && err.status === 404) notFound();
     error = toMessage(err);
@@ -59,11 +62,11 @@ async function BookShell({ params }: Props) {
     );
   }
 
-  if (event.status !== "APPROVED") {
+  if (event.status !== "ACTIVE") {
     return (
       <div className="py-6">
         <Alert tone="info" title="Not available for booking">
-          This event is under review and cannot be booked yet.{" "}
+          This event is {event.status.toLowerCase()} and cannot be booked yet.{" "}
           <Link href="/events" className="font-semibold underline">
             Browse events
           </Link>

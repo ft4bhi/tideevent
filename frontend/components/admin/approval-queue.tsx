@@ -23,7 +23,7 @@ export function ApprovalQueue() {
 
   useEffect(() => {
     let cancelled = false;
-    adminEvents("PENDING").then(
+    adminEvents("ACTIVE").then(
       (list) => {
         if (!cancelled) setEvents(list);
       },
@@ -41,9 +41,9 @@ export function ApprovalQueue() {
     setActionError(null);
     setNotice(null);
     try {
-      await reviewEvent(e.id, "APPROVE");
+      await reviewEvent(e.id, "ACTIVATE");
       setEvents((prev) => (prev ?? []).filter((x) => x.id !== e.id));
-      setNotice(`“${e.title}” approved — it is now public and bookable.`);
+      setNotice(`“${e.title}” activated — it is now public and bookable.`);
     } catch (err) {
       setActionError(toMessage(err));
     } finally {
@@ -58,10 +58,10 @@ export function ApprovalQueue() {
     setActionError(null);
     setNotice(null);
     try {
-      await reviewEvent(target.id, "REJECT", reason);
+      await reviewEvent(target.id, "CANCEL", reason);
       setEvents((prev) => (prev ?? []).filter((x) => x.id !== target.id));
       setRejectTarget(null);
-      setNotice(`“${target.title}” rejected with feedback for the organizer.`);
+      setNotice(`“${target.title}” cancelled.`);
     } catch (err) {
       setActionError(toMessage(err));
     } finally {
@@ -105,7 +105,7 @@ export function ApprovalQueue() {
               <Card className="flex flex-col gap-3 p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-lg font-bold text-[#202B3C]">{e.title}</h2>
-                  <Badge tone="PENDING">PENDING</Badge>
+                  <Badge tone={e.status}>{e.status}</Badge>
                 </div>
                 <p className="text-sm text-[#202B3C]">{e.description}</p>
                 <dl className="flex flex-col gap-1 text-sm text-[#687386]">
@@ -136,7 +136,7 @@ export function ApprovalQueue() {
                     onClick={() => approve(e)}
                     disabled={processingId === e.id}
                   >
-                    {processingId === e.id ? "Approving…" : "Approve"}
+                    {processingId === e.id ? "Activating…" : "Activate"}
                   </Button>
                   <Button
                     size="sm"
@@ -147,7 +147,7 @@ export function ApprovalQueue() {
                     }}
                     disabled={processingId === e.id}
                   >
-                    Reject
+                    Cancel
                   </Button>
                 </div>
               </Card>

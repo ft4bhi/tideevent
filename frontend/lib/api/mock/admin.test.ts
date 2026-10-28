@@ -12,7 +12,8 @@ import {
 } from "@/lib/api/mock/store";
 import { mockListEvents } from "@/lib/api/mock/store";
 
-const PENDING_ID = "a7a7a7a7-a7a7-47a7-87a7-a7a7a7a7a7a7";
+const JAZZ_ID = "a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1";
+const CANCELLED_ID = "b8b8b8b8-b8b8-48b8-88b8-b8b8b8b8b8b8";
 
 async function codeOf(p: Promise<unknown>): Promise<string> {
   try {
@@ -36,40 +37,44 @@ beforeEach(() => {
   mockStore.reset();
 });
 
-describe("mock admin approvals (T-07)", () => {
-  it("non-admins cannot review events (403)", async () => {
+describe("mock admin moderation (T-07)", () => {
+  it("non-admins cannot moderate events (403)", async () => {
     await loginAs("ATTENDEE");
-    expect(await codeOf(mockApproveEvent(PENDING_ID, "APPROVE"))).toBe("FORBIDDEN");
+    expect(await codeOf(mockApproveEvent(JAZZ_ID, "ACTIVATE"))).toBe("FORBIDDEN");
     expect(await codeOf(mockAdminEvents())).toBe("FORBIDDEN");
   });
 
-  it("approve makes the event public and bookable", async () => {
+  it("activate makes a suspended event public and bookable", async () => {
     await loginAs("ADMIN");
-    const queue = await mockAdminEvents("PENDING");
-    expect(queue.map((e) => e.id)).toContain(PENDING_ID);
+    // Manually set an event to SUSPENDED for this test (CANCELLED is terminal).
+    const eventToSuspend = mockStore.events.find((e) => e.id === JAZZ_ID);
+    if (eventToSuspend) eventToSuspend.status = "SUSPENDED";
 
-    const approved = await mockApproveEvent(PENDING_ID, "APPROVE");
-    expect(approved.status).toBe("APPROVED");
+    const queue = await mockAdminEvents("SUSPENDED");
+    expect(queue.map((e) => e.id)).toContain(JAZZ_ID);
 
-    const queueAfter = await mockAdminEvents("PENDING");
-    expect(queueAfter.map((e) => e.id)).not.toContain(PENDING_ID);
+    const activated = await mockApproveEvent(JAZZ_ID, "ACTIVATE");
+    expect(activated.status).toBe("ACTIVE");
 
-    const pub = await mockListEvents({ q: "Indie Film" });
-    expect(pub.data.map((e) => e.id)).toContain(PENDING_ID);
+    const queueAfter = await mockAdminEvents("SUSPENDED");
+    expect(queueAfter.map((e) => e.id)).not.toContain(JAZZ_ID);
+
+    const pub = await mockListEvents({ q: "Monsoon Jazz" });
+    expect(pub.data.map((e) => e.id)).toContain(JAZZ_ID);
   });
 
-  it("reject requires a reason (422) and stores it", async () => {
+  it("cancel requires a reason (422) and stores it", async () => {
     await loginAs("ADMIN");
-    expect(await codeOf(mockApproveEvent(PENDING_ID, "REJECT", "short"))).toBe("VALIDATION_ERROR");
-    expect(await codeOf(mockApproveEvent(PENDING_ID, "REJECT"))).toBe("VALIDATION_ERROR");
-    const rejected = await mockApproveEvent(
-      PENDING_ID,
-      "REJECT",
-      "Please add venue permits and resubmit.",
+    expect(await codeOf(mockApproveEvent(JAZZ_ID, "CANCEL", "short"))).toBe("VALIDATION_ERROR");
+    expect(await codeOf(mockApproveEvent(JAZZ_ID, "CANCEL"))).toBe("VALIDATION_ERROR");
+    const cancelled = await mockApproveEvent(
+      JAZZ_ID,
+      "CANCEL",
+      "Route crosses an unlit highway stretch. Please choose a closed-loop park route.",
     );
-    expect(rejected.status).toBe("REJECTED");
-    expect(rejected.rejection_reason).toMatch(/permits/);
-    const pub = await mockListEvents({ q: "Indie Film" });
+    expect(cancelled.status).toBe("CANCELLED");
+    expect(cancelled.rejection_reason).toMatch(/highway/);
+    const pub = await mockListEvents({ q: "Monsoon Jazz" });
     expect(pub.data).toHaveLength(0);
   });
 });

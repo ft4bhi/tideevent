@@ -8,14 +8,14 @@ const JAZZ_EDIT_URL =
 const JAZZ_BOOKINGS_URL =
   "/organizer/events/a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1/bookings";
 
-test("organizer overview + create event, pending stays hidden (E-08, E-09)", async ({ page }) => {
+test("organizer overview + create event, active stays visible (E-08, E-09)", async ({ page }) => {
   await signOut(page);
   await loginAs(page, ACCOUNTS.organizer.email, ACCOUNTS.organizer.password);
 
   await page.goto("/organizer");
   await expect(page.getByRole("heading", { name: "Organizer" })).toBeVisible();
   await expect(page.getByText("Total events")).toBeVisible();
-  await expect(page.getByText("Pending review")).toBeVisible();
+  await expect(page.getByText("Active events")).toBeVisible();
 
   const title = `E2E Workshop ${Date.now()}`;
   await page.goto("/organizer/events/new");
@@ -27,25 +27,24 @@ test("organizer overview + create event, pending stays hidden (E-08, E-09)", asy
   await page.getByRole("button", { name: "Submit for review" }).click();
   await expect(page).toHaveURL("/organizer/events");
   await expect(page.getByText(title)).toBeVisible();
-  await expect(page.getByText("PENDING").first()).toBeVisible();
+  await expect(page.getByText("ACTIVE").first()).toBeVisible();
 
-  // Pending event is not publicly bookable/searchable.
+  // Active event is publicly bookable/searchable.
   await signOut(page);
   await page.goto(`/events?q=${encodeURIComponent(title)}`);
-  await expect(page.getByText("No events found")).toBeVisible();
+  await expect(page.getByText(title)).toBeVisible();
 });
 
-test("rejected event shows reason and resubmits as pending (E-12)", async ({ page }) => {
+test("cancelled event shows reason and can be reactivated (E-12)", async ({ page }) => {
   await signOut(page);
   await loginAs(page, ACCOUNTS.organizer.email, ACCOUNTS.organizer.password);
 
   await page.goto(REJECTED_EDIT_URL);
-  await expect(page.getByText("REJECTED").first()).toBeVisible();
+  await expect(page.getByText("CANCELLED").first()).toBeVisible();
   await expect(page.getByText(/unlit highway/i)).toBeVisible();
   await page.getByLabel("Title").fill(`Marathon Practice Run v2 ${Date.now()}`);
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText(/pending review/i).first()).toBeVisible();
-  await expect(page.getByText("PENDING").first()).toBeVisible();
+  await expect(page.getByText(/saved/i).first()).toBeVisible();
 });
 
 test("organizer cannot manage another organizer's event (E-10)", async ({ page }) => {

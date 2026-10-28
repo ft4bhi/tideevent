@@ -36,7 +36,7 @@ export function EventCard({ event }: { event: EventItem }) {
           <p className="mt-1 text-sm font-semibold text-[#202B3C]">
             {priceLabel(event.price_inr)}
             <span className="ml-2 font-normal text-[#687386]">
-              {soldOut ? "· Sold out" : event.price_inr === 0 ? "· Free entry" : "· onwards"}
+              {soldOut ? "· Sold out" : event.price_inr === 0 ? "· Free entry" : event.price_inr === undefined ? "· Price unavailable" : "· onwards"}
             </span>
           </p>
         </div>

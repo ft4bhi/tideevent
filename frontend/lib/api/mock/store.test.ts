@@ -6,10 +6,10 @@ beforeEach(() => {
 });
 
 describe("mockListEvents (T-01)", () => {
-  it("lists only approved upcoming events (pending + rejected hidden)", async () => {
+  it("lists only active upcoming events", async () => {
     const { data } = await mockListEvents();
     expect(data.length).toBeGreaterThan(0);
-    expect(data.every((e) => e.status === "APPROVED")).toBe(true);
+    expect(data.every((e) => e.status === "ACTIVE")).toBe(true);
   });
 
   it("filters by keyword across title and description", async () => {

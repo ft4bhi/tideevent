@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventDetails } from "@/components/events/event-details";
@@ -9,9 +10,11 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+const getEventCached = cache(getEvent);
+
 export async function generateMetadata({ params }: Props) {
   try {
-    const event = await getEvent((await params).id);
+    const event = await getEventCached((await params).id);
     return { title: event.title };
   } catch {
     return { title: "Event" };
@@ -23,7 +26,7 @@ export default async function EventPage({ params }: Props) {
   let event: Awaited<ReturnType<typeof getEvent>> | null = null;
   let error: string | null = null;
   try {
-    event = await getEvent(id);
+    event = await getEventCached(id);
   } catch (err) {
     if (isApiError(err) && err.status === 404) notFound();
     error = toMessage(err);

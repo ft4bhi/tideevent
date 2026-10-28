@@ -9,6 +9,10 @@ describe("priceLabel", () => {
     expect(priceLabel(499)).toBe("₹499");
     expect(priceLabel(10000)).toBe("₹10,000");
   });
+  it("does not crash on missing price", () => {
+    expect(priceLabel(undefined)).toBe("Price unavailable");
+    expect(priceLabel(null)).toBe("Price unavailable");
+  });
 });
 
 describe("availability", () => {

@@ -12,7 +12,7 @@ import {
 
 const JAZZ_ID = "a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1";
 const SOLDOUT_ID = "b2b2b2b2-b2b2-42b2-82b2-b2b2b2b2b2b2";
-const PENDING_ID = "a7a7a7a7-a7a7-47a7-87a7-a7a7a7a7a7a7";
+const CANCELLED_ID = "b8b8b8b8-b8b8-48b8-88b8-b8b8b8b8b8b8";
 
 async function codeOf(p: Promise<unknown>): Promise<string> {
   try {
@@ -47,12 +47,12 @@ describe("mock booking flow (T-05)", () => {
     expect(await codeOf(mockMyBookings())).toBe("UNAUTHENTICATED");
   });
 
-  it("rejects sold-out events (409) and pending events (410)", async () => {
+  it("rejects sold-out events (409) and unavailable events (403)", async () => {
     // attendee already has no booking on these; capacity rules fire first
     await mockLogout();
     await mockLogin("organizer@example.com", "organizer123");
     expect(await codeOf(mockBook(SOLDOUT_ID))).toBe("EVENT_SOLD_OUT");
-    expect(await codeOf(mockBook(PENDING_ID))).toBe("EVENT_NOT_APPROVED");
+    expect(await codeOf(mockBook(CANCELLED_ID))).toBe("EVENT_UNAVAILABLE");
   });
 
   it("rejects duplicate booking for the same event (409)", async () => {

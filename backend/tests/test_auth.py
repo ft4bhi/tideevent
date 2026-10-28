@@ -148,6 +148,30 @@ def test_csrf_enforced_for_unsafe_requests():
     assert res.status_code == 204
 
 
+def test_repeat_login_with_existing_session_requires_csrf():
+    """Models the browser bug: the first (anonymous) login succeeds without a
+    CSRF header, but a retry now carries the session cookie, so DRF enforces
+    CSRF on the same login endpoint."""
+    make_user(email="repeat@example.com")
+    client = csrf_client()
+    first = csrf_post(client, "/api/v1/auth/login",
+                      {"email": "repeat@example.com", "password": "password123"})
+    assert first.status_code == 200
+
+    retry = client.post("/api/v1/auth/login",
+                        {"email": "repeat@example.com", "password": "password123"})
+    assert retry.status_code == 403
+    assert retry.json()["error"]["code"] == "FORBIDDEN"
+    assert "CSRF" in retry.json()["error"]["message"]
+
+    token = client.cookies["csrftoken"].value
+    with_token = client.post("/api/v1/auth/login",
+                             {"email": "repeat@example.com", "password": "password123"},
+                             HTTP_X_CSRFTOKEN=token)
+    assert with_token.status_code == 200
+    assert with_token.json()["user"]["email"] == "repeat@example.com"
+
+
 def test_auth_throttle_returns_envelope_429():
     # NOTE: throttle rates bind at import, so override_settings cannot change
     # them; patch the throttle class directly (documented DRF testing gotcha).

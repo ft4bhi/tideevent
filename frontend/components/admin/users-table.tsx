@@ -105,7 +105,7 @@ export function UsersTable() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-semibold text-[#202B3C]">{u.name}</p>
                       <Badge>{u.role}</Badge>
-                      <Badge tone={u.status === "ACTIVE" ? "APPROVED" : "CANCELLED"}>
+                      <Badge tone={u.status === "ACTIVE" ? "ACTIVE" : "SUSPENDED"}>
                         {u.status}
                       </Badge>
                     </div>

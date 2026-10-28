@@ -50,7 +50,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/jazz-night/800/600",
     price_inr: 499,
-    status: "APPROVED",
+    status: "ACTIVE",
     created_at: "2026-02-01T10:00:00.000Z",
   },
   {
@@ -68,7 +68,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/laugh-riot/800/600",
     price_inr: 299,
-    status: "APPROVED",
+    status: "ACTIVE",
     created_at: "2026-02-02T10:00:00.000Z",
   },
   {
@@ -86,7 +86,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/pottery/800/600",
     price_inr: 0,
-    status: "APPROVED",
+    status: "ACTIVE",
     created_at: "2026-02-03T10:00:00.000Z",
   },
   {
@@ -104,7 +104,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/food-carnival/800/600",
     price_inr: 199,
-    status: "APPROVED",
+    status: "ACTIVE",
     created_at: "2026-02-04T10:00:00.000Z",
   },
   {
@@ -122,7 +122,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/shakespeare/800/600",
     price_inr: 0,
-    status: "APPROVED",
+    status: "ACTIVE",
     created_at: "2026-02-05T10:00:00.000Z",
   },
   {
@@ -140,7 +140,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/hacknight/800/600",
     price_inr: 0,
-    status: "APPROVED",
+    status: "ACTIVE",
     created_at: "2026-02-06T10:00:00.000Z",
   },
   {
@@ -158,14 +158,14 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/indie-film/800/600",
     price_inr: 149,
-    status: "PENDING",
+    status: "ACTIVE",
     created_at: "2026-03-01T10:00:00.000Z",
   },
   {
     id: "b8b8b8b8-b8b8-48b8-88b8-b8b8b8b8b8b8",
     title: "Midnight Marathon Practice Run",
     description:
-      "A draft submission with an unsafe route and missing permissions. Rejected with guidance.",
+      "A draft submission with an unsafe route and missing permissions. Cancelled with guidance.",
     category: "SPORTS",
     starts_at: daysFromNow(15),
     location: "Lake Loop",
@@ -176,7 +176,7 @@ export const seedEvents: EventItem[] = [
     organizer_name: seedUsers[1].name,
     poster_url: "https://picsum.photos/seed/marathon/800/600",
     price_inr: 99,
-    status: "REJECTED",
+    status: "CANCELLED",
     rejection_reason:
       "Route crosses an unlit highway stretch. Please choose a closed-loop park route and re-submit with the permit number.",
     created_at: "2026-03-02T10:00:00.000Z",

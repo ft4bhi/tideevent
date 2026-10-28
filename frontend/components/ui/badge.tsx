@@ -1,10 +1,9 @@
 import { cn } from "@/lib/utils/cn";
 
 const styles: Record<string, string> = {
-  APPROVED: "bg-green-50 text-green-800 border-green-200",
+  ACTIVE: "bg-green-50 text-green-800 border-green-200",
   CONFIRMED: "bg-[#202B3C] text-white border-[#202B3C]",
-  PENDING: "bg-amber-50 text-amber-800 border-amber-200",
-  REJECTED: "bg-red-50 text-red-800 border-red-200",
+  SUSPENDED: "bg-amber-50 text-amber-800 border-amber-200",
   CANCELLED: "bg-slate-100 text-slate-600 border-slate-200",
   SOLDOUT: "bg-slate-100 text-slate-600 border-slate-200",
   FREE: "bg-green-50 text-green-800 border-green-200",

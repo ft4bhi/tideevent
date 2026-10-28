@@ -48,14 +48,18 @@ export function OrganizerOverview() {
   }
 
   const total = events.length;
-  const pending = events.filter((e) => e.status === "PENDING").length;
-  const approved = events.filter((e) => e.status === "APPROVED").length;
-  const bookings = events.reduce((sum, e) => sum + e.booked_count, 0);
+  const active = events.filter((e) => e.status === "ACTIVE").length;
+  const suspended = events.filter((e) => e.status === "SUSPENDED").length;
+  const cancelled = events.filter((e) => e.status === "CANCELLED").length;
+  // booked_count isn't part of the live event-list serializer; guard so a
+  // missing field never produces NaN.
+  const bookings = events.reduce((sum, e) => sum + (e.booked_count ?? 0), 0);
 
   const stats = [
     { label: "Total events", value: total },
-    { label: "Pending review", value: pending },
-    { label: "Approved", value: approved },
+    { label: "Active", value: active },
+    { label: "Suspended", value: suspended },
+    { label: "Cancelled", value: cancelled },
     { label: "Total bookings", value: bookings },
   ];
 
@@ -73,7 +77,7 @@ export function OrganizerOverview() {
         <EmptyState
           icon={CalendarX}
           title="No events yet"
-          copy="Create your first event and submit it for review."
+          copy="Create your first event."
           action={
             <Link
               href="/organizer/events/new"

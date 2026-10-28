@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNTS, loginAs, signOut } from "./helpers";
 
 const JAZZ_ID = "a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1";
-const PENDING_ID = "a7a7a7a7-a7a7-47a7-87a7-a7a7a7a7a7a7";
+const CANCELLED_ID = "b8b8b8b8-b8b8-48b8-88b8-b8b8b8b8b8b8";
 const SEED_BOOKING_ID = "d0000000-0000-4000-8000-000000000001";
 const MISSING_ID = "00000000-0000-4000-8000-000000000000";
 
@@ -34,9 +34,9 @@ test("cross-user ticket URL is forbidden without data leak (E-07)", async ({ pag
   await expect(page.getByText(/^TD-/)).toHaveCount(0);
 });
 
-test("pending event is hidden from guests entirely (E-09 direct)", async ({ page }) => {
+test("cancelled event is hidden from guests entirely (E-09 direct)", async ({ page }) => {
   await signOut(page);
-  await page.goto(`/events/${PENDING_ID}`);
+  await page.goto(`/events/${CANCELLED_ID}`);
   // Non-owners get a plain not-found page: no details, no booking action.
   await expect(page.getByText("Event not found")).toBeVisible();
   await expect(page.getByRole("link", { name: "Book Now" })).toHaveCount(0);
@@ -76,7 +76,7 @@ test("no horizontal overflow at 360px across all MVP pages (E-13)", async ({ pag
     `/events/${JAZZ_ID}`,
     "/login",
     "/register",
-    `/events/${PENDING_ID}`,
+    `/events/${CANCELLED_ID}`,
     `/events/${MISSING_ID}`,
   ]) {
     await expectNoOverflow(url);

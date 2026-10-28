@@ -7,9 +7,20 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/input";
 import { CATEGORIES, CATEGORY_LABELS, CITIES } from "@/config/site";
-import { toMessage } from "@/lib/api/errors";
+import { isApiError, toMessage } from "@/lib/api/errors";
 import { eventFormSchema, type EventFormInput, type EventFormRawInput } from "@/lib/validation/event";
 import type { EventItem } from "@/types/domain";
+
+const FORM_FIELDS = [
+  "title",
+  "description",
+  "category",
+  "starts_at",
+  "location",
+  "city",
+  "capacity",
+  "poster_url",
+] as const;
 
 function toDateTimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -33,6 +44,7 @@ export function EventForm({
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<EventFormRawInput>({
     resolver: zodResolver(eventFormSchema),
@@ -62,13 +74,25 @@ export function EventForm({
         onSaved(saved);
         return;
       }
-      setSavedNote(
-        saved.status === "PENDING"
-          ? "Saved — your event is pending review."
-          : "Saved.",
-      );
+      setSavedNote("Saved.");
     } catch (err) {
-      setServerError(toMessage(err));
+      const fields = isApiError(err) ? err.fields : undefined;
+      const entries = fields ? Object.entries(fields) : [];
+      if (entries.length === 0) {
+        setServerError(toMessage(err));
+        return;
+      }
+      const unmapped: string[] = [];
+      for (const [key, message] of entries) {
+        if (FORM_FIELDS.includes(key as (typeof FORM_FIELDS)[number])) {
+          setError(key as keyof EventFormRawInput, { type: "server", message });
+        } else {
+          unmapped.push(message);
+        }
+      }
+      setServerError(
+        unmapped.length ? `${toMessage(err)} ${unmapped.join(" ")}` : null,
+      );
     }
   }
 

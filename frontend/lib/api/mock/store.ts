@@ -165,7 +165,7 @@ export function mockSessionUser(): User | null {
 export async function mockListEvents(filters: EventFilters = {}): Promise<Paged<EventItem>> {
   await delay();
   let list = mockStore.events.filter(
-    (e) => e.status === "APPROVED" && new Date(e.starts_at).getTime() >= Date.now() - 24 * 3600 * 1000,
+    (e) => e.status === "ACTIVE" && new Date(e.starts_at).getTime() >= Date.now() - 24 * 3600 * 1000,
   );
   if (filters.q) {
     const q = filters.q.toLowerCase();
@@ -192,8 +192,8 @@ export async function mockGetEvent(id: string): Promise<EventItem> {
   if (!e) throw new ApiError("EVENT_NOT_FOUND", "Event not found.", 404);
   const me = mockSessionUser();
   const canSee =
-    e.status === "APPROVED" || me?.role === "ADMIN" || (me && e.organizer_id === me.id);
-  if (!canSee) throw new ApiError("EVENT_NOT_FOUND", "This event is under review and not public yet.", 404);
+    e.status === "ACTIVE" || me?.role === "ADMIN" || (me && e.organizer_id === me.id);
+  if (!canSee) throw new ApiError("EVENT_NOT_FOUND", "This event is not public.", 404);
   return clone(e);
 }
 
@@ -241,8 +241,8 @@ export async function mockBook(eventId: string): Promise<Booking> {
   const me = mockSessionUser();
   if (!me) throw new ApiError("UNAUTHENTICATED", "Please log in to book.", 401);
   const e = mockStore.events.find((x) => x.id === eventId);
-  if (!e || e.status !== "APPROVED")
-    throw new ApiError("EVENT_NOT_APPROVED", "This event is not available for booking.", 410);
+  if (!e || e.status !== "ACTIVE")
+    throw new ApiError("EVENT_UNAVAILABLE", "This event is not available for booking.", 403);
   if (e.booked_count >= e.capacity)
     throw new ApiError("EVENT_SOLD_OUT", "This event is sold out.", 409);
   if (mockStore.bookings.some((b) => b.user_id === me.id && b.event_id === eventId && b.status === "CONFIRMED"))
@@ -304,7 +304,7 @@ export async function mockCreateEvent(input: Omit<EventItem, "id" | "booked_coun
     booked_count: 0,
     organizer_id: me.id,
     organizer_name: me.name,
-    status: "PENDING",
+    status: "ACTIVE",
     created_at: new Date().toISOString(),
   };
   mockStore.events.push(e);
@@ -325,10 +325,6 @@ export async function mockUpdateEvent(
   if (patch.capacity !== undefined && patch.capacity < e.booked_count)
     throw new ApiError("EVENT_NOT_EDITABLE", `Capacity cannot be below ${e.booked_count} already booked.`, 409);
   Object.assign(e, patch);
-  if (e.status === "REJECTED") {
-    e.status = "PENDING";
-    delete e.rejection_reason;
-  }
   saveDb();
   return clone(e);
 }
@@ -343,7 +339,7 @@ export async function mockEventBookings(eventId: string): Promise<Booking[]> {
   return clone(mockStore.bookings.filter((b) => b.event_id === eventId));
 }
 
-export async function mockAdminEvents(status = "PENDING"): Promise<EventItem[]> {
+export async function mockAdminEvents(status = "ACTIVE"): Promise<EventItem[]> {
   await delay();
   const me = mockSessionUser();
   if (!me) throw new ApiError("UNAUTHENTICATED", "Please log in.", 401);
@@ -351,20 +347,20 @@ export async function mockAdminEvents(status = "PENDING"): Promise<EventItem[]> 
   return clone(mockStore.events.filter((e) => e.status === status));
 }
 
-export async function mockApproveEvent(id: string, action: "APPROVE" | "REJECT", reason?: string): Promise<EventItem> {
+export async function mockApproveEvent(id: string, action: "ACTIVATE" | "CANCEL", reason?: string): Promise<EventItem> {
   await delay(300);
   const me = mockSessionUser();
   if (!me) throw new ApiError("UNAUTHENTICATED", "Please log in.", 401);
   if (me.role !== "ADMIN") throw new ApiError("FORBIDDEN", "Admin access required.", 403);
   const e = mockStore.events.find((x) => x.id === id);
   if (!e) throw new ApiError("EVENT_NOT_FOUND", "Event not found.", 404);
-  if (action === "REJECT") {
+  if (action === "CANCEL") {
     if (!reason || reason.trim().length < 10)
-      throw new ApiError("VALIDATION_ERROR", "Give a rejection reason of at least 10 characters.", 422);
-    e.status = "REJECTED";
+      throw new ApiError("VALIDATION_ERROR", "Give a cancellation reason of at least 10 characters.", 422);
+    e.status = "CANCELLED";
     e.rejection_reason = reason.trim();
   } else {
-    e.status = "APPROVED";
+    e.status = "ACTIVE";
     delete e.rejection_reason;
   }
   saveDb();

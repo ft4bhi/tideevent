@@ -2,10 +2,19 @@ import { apiFetch, isMockMode } from "@/lib/api/client";
 import { mockLogin, mockLogout, mockRegister, mockSessionUser } from "@/lib/api/mock/store";
 import type { User } from "@/types/domain";
 
+interface SessionEnvelope {
+  user: User | null;
+}
+
+interface UserEnvelope {
+  user: User;
+}
+
 export async function me(): Promise<User | null> {
   if (isMockMode()) return mockSessionUser();
   try {
-    return await apiFetch<User>("/auth/me");
+    const body = await apiFetch<SessionEnvelope>("/auth/me");
+    return body.user ?? null;
   } catch (err) {
     void err;
     return null;
@@ -14,10 +23,11 @@ export async function me(): Promise<User | null> {
 
 export async function login(email: string, password: string): Promise<User> {
   if (isMockMode()) return mockLogin(email, password);
-  return apiFetch<User>("/auth/login", {
+  const body = await apiFetch<UserEnvelope>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+  return body.user;
 }
 
 export async function register(input: {
@@ -27,10 +37,11 @@ export async function register(input: {
   role: "ATTENDEE" | "ORGANIZER";
 }): Promise<User> {
   if (isMockMode()) return mockRegister(input);
-  return apiFetch<User>("/auth/register", {
+  const body = await apiFetch<UserEnvelope>("/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  return body.user;
 }
 
 export async function logout(): Promise<void> {

@@ -83,12 +83,12 @@ export function EditEventView({ id }: { id: string }) {
     <div className="flex max-w-2xl flex-col gap-4">
       <div className="flex items-center gap-2">
         <Badge tone={event.status}>{event.status}</Badge>
-        {event.status === "REJECTED" && (
-          <span className="text-sm text-[#687386]">editing resubmits for review</span>
+        {event.status === "CANCELLED" && (
+          <span className="text-sm text-[#687386]">editing creates a new draft</span>
         )}
       </div>
-      {event.status === "REJECTED" && event.rejection_reason && (
-        <Alert tone="error" title="Reviewer feedback">
+      {event.status === "CANCELLED" && event.rejection_reason && (
+        <Alert tone="error" title="Cancellation reason">
           {event.rejection_reason}
         </Alert>
       )}

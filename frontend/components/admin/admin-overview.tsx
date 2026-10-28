@@ -15,7 +15,7 @@ export function AdminOverview() {
     let cancelled = false;
     Promise.all([
       adminUsers(),
-      adminEvents("PENDING"),
+      adminEvents("ACTIVE"),
       adminBookings(),
       listEvents(),
     ]).then(
@@ -23,7 +23,7 @@ export function AdminOverview() {
         if (cancelled) return;
         setStats([
           { label: "Users", value: users.length },
-          { label: "Pending approvals", value: pending.length },
+          { label: "Active events", value: pending.length },
           { label: "Bookings", value: bookings.length },
           { label: "Public events", value: pub.meta.total },
         ]);

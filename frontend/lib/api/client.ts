@@ -34,7 +34,49 @@ interface ApiEnvelope<T> {
 }
 
 interface ApiErrorBody {
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; fields?: unknown };
+}
+
+function flattenFieldErrors(raw: unknown): Record<string, string> | undefined {
+  if (raw === null || typeof raw !== "object") return undefined;
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string") out[key] = value;
+    else if (Array.isArray(value)) {
+      const joined = value.filter((v): v is string => typeof v === "string").join(" ");
+      out[key] = joined || JSON.stringify(value);
+    } else if (value && typeof value === "object") out[key] = JSON.stringify(value);
+    else out[key] = String(value);
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  for (const chunk of document.cookie.split(";")) {
+    const part = chunk.trim();
+    if (part.startsWith(prefix)) return decodeURIComponent(part.slice(prefix.length));
+  }
+  return null;
+}
+
+async function readCsrfToken(): Promise<string | null> {
+  const existing = readCookie("csrftoken");
+  if (existing) return existing;
+  if (typeof document === "undefined") return null;
+  try {
+    // /auth/me is decorated with @ensure_csrf_cookie and sets the cookie.
+    await fetch(`${apiBaseUrl()}/auth/me`, {
+      method: "GET",
+      credentials: "include",
+    });
+  } catch {
+    return null;
+  }
+  return readCookie("csrftoken");
 }
 
 async function parseBody(res: Response): Promise<unknown> {
@@ -56,12 +98,21 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (UNSAFE_METHODS.has(method)) {
+    const token = await readCsrfToken();
+    if (token) headers.set("X-CSRFToken", token);
+  }
+
   let res: Response;
   try {
     res = await fetch(`${apiBaseUrl()}${path}`, {
       ...init,
+      method,
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      headers,
     });
   } catch {
     throw new ApiError("NETWORK_ERROR", "Cannot reach the server. Check your connection and retry.", 0);
@@ -75,12 +126,18 @@ export async function apiFetch<T>(
       errBody?.error?.code ?? "REQUEST_FAILED",
       errBody?.error?.message ?? `Request failed (${res.status}).`,
       res.status,
+      flattenFieldErrors(errBody?.error?.fields),
     );
   }
 
-  // Unwrap Flask envelope { data } when present, else return body as T.
-  if (body !== null && typeof body === "object" && "data" in body) {
-    return (body as ApiEnvelope<T>).data;
+  // Keep envelopes for paginated/list endpoints; unwrap for single-object endpoints.
+  if (body !== null && typeof body === "object") {
+    if ("data" in body && "meta" in body) {
+      return body as T;
+    }
+    if ("data" in body && !("meta" in body)) {
+      return (body as ApiEnvelope<T>).data;
+    }
   }
   return body as T;
 }

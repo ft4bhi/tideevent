@@ -8,14 +8,14 @@ import {
 } from "@/lib/api/mock/store";
 import type { Booking, EventItem, User } from "@/types/domain";
 
-export async function adminEvents(status = "PENDING"): Promise<EventItem[]> {
+export async function adminEvents(status = "ACTIVE"): Promise<EventItem[]> {
   if (isMockMode()) return mockAdminEvents(status);
   return apiFetch<EventItem[]>(`/admin/events?status=${status}`);
 }
 
 export async function reviewEvent(
   id: string,
-  action: "APPROVE" | "REJECT",
+  action: "ACTIVATE" | "CANCEL",
   reason?: string,
 ): Promise<EventItem> {
   if (isMockMode()) return mockApproveEvent(id, action, reason);

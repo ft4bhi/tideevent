@@ -10,7 +10,7 @@ export default function OrganizerEventsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#202B3C]">My events</h1>
-          <p className="mt-1 text-[#687386]">New events start as pending review.</p>
+          <p className="mt-1 text-[#687386]">New events are published immediately.</p>
         </div>
         <Link
           href="/organizer/events/new"

@@ -1,5 +1,5 @@
 export type Role = "ATTENDEE" | "ORGANIZER" | "ADMIN";
-export type EventStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type EventStatus = "ACTIVE" | "SUSPENDED" | "CANCELLED";
 export type BookingStatus = "CONFIRMED" | "CANCELLED";
 export type EventCategory =
   | "MUSIC"
@@ -33,10 +33,12 @@ export interface EventItem {
   organizer_id: string;
   organizer_name: string;
   poster_url?: string;
-  price_inr: number;
+  price_inr?: number;
   status: EventStatus;
   rejection_reason?: string;
   created_at: string;
+  ticket_types?: TicketType[];
+  sections?: EventSection[];
 }
 
 export interface Booking {
@@ -52,6 +54,34 @@ export interface Booking {
   >;
   attendee_name?: string;
   attendee_email?: string;
+}
+
+export interface TicketType {
+  id: string;
+  name: string;
+  price_inr: number;
+  quantity_total: number;
+  remaining: number;
+}
+
+export interface EventSeat {
+  id: string;
+  number: number;
+  is_accessible: boolean;
+  is_sellable: boolean;
+}
+
+export interface EventRow {
+  id: string;
+  label: string;
+  seats: EventSeat[];
+}
+
+export interface EventSection {
+  id: string;
+  name: string;
+  price_inr: number;
+  rows: EventRow[];
 }
 
 export interface Paged<T> {

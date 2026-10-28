@@ -8,7 +8,7 @@ export default function NotFound() {
       <EmptyState
         icon={CalendarX}
         title="Event not found"
-        copy="This event may have been removed or is still under review."
+        copy="This event may have been removed or is no longer available."
         action={
           <Link
             href="/events"

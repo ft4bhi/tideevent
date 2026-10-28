@@ -10,8 +10,8 @@ import type { EventItem } from "@/types/domain";
 export function EventDetails({ event }: { event: EventItem }) {
   const soldOut = isSoldOut(event.capacity, event.booked_count);
   const left = seatsLeft(event.capacity, event.booked_count);
-  const pending = event.status !== "APPROVED";
-  const bookable = !pending && !soldOut;
+  const unavailable = event.status !== "ACTIVE";
+  const bookable = !unavailable && !soldOut;
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_1fr]">
@@ -24,8 +24,14 @@ export function EventDetails({ event }: { event: EventItem }) {
           <Badge tone={event.price_inr === 0 ? "FREE" : "DEFAULT"}>
             {priceLabel(event.price_inr)}
           </Badge>
-          {soldOut && !pending && <Badge tone="SOLDOUT">Sold out</Badge>}
-          {pending && <Badge tone="PENDING">Under review</Badge>}
+          {soldOut && !unavailable && <Badge tone="SOLDOUT">Sold out</Badge>}
+          {unavailable && (
+            <Badge
+              tone={event.status === "SUSPENDED" ? "SUSPENDED" : "CANCELLED"}
+            >
+              {event.status}
+            </Badge>
+          )}
         </div>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#202B3C]">
           {event.title}
@@ -55,14 +61,14 @@ export function EventDetails({ event }: { event: EventItem }) {
         <Card className="flex flex-col gap-4 p-5 lg:sticky lg:top-24">
           <div className="flex items-center justify-between">
             <p className="text-2xl font-bold text-[#202B3C]">{priceLabel(event.price_inr)}</p>
-            {!pending && (
+            {!unavailable && (
               <p className="flex items-center gap-1.5 text-sm text-[#687386]">
                 <Ticket className="h-4 w-4" aria-hidden />
                 {soldOut ? "Sold out" : `${left} of ${event.capacity} seats left`}
               </p>
             )}
           </div>
-          {!soldOut && !pending && (
+          {!soldOut && !unavailable && (
             <div
               className="h-2 overflow-hidden rounded-full bg-[#F8F8F5]"
               role="progressbar"
@@ -77,9 +83,9 @@ export function EventDetails({ event }: { event: EventItem }) {
               />
             </div>
           )}
-          {pending ? (
+          {unavailable ? (
             <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-              This event is under review and cannot be booked yet.
+              This event is {event.status.toLowerCase()} and cannot be booked yet.
             </p>
           ) : (
             <BookingPanel
