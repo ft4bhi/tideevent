@@ -20,7 +20,6 @@ function gaCreatePayload(input: EventFormInput) {
     location: input.location,
     city: input.city,
     capacity: input.capacity,
-    poster_url: input.poster_url ?? "",
     booking_mode: "GENERAL_ADMISSION" as const,
     ticket_types: [
       {
@@ -30,6 +29,16 @@ function gaCreatePayload(input: EventFormInput) {
       },
     ],
   };
+}
+
+async function savePoster(id: string, input: Pick<EventFormInput, "poster_file" | "remove_poster">) {
+  if (input.poster_file) {
+    const form = new FormData();
+    form.append("poster", input.poster_file);
+    return apiFetch<EventItem>(`/organizer/events/${id}/poster`, { method: "POST", body: form });
+  }
+  if (input.remove_poster) return apiFetch<EventItem>(`/organizer/events/${id}/poster`, { method: "DELETE" });
+  return null;
 }
 
 function withIsoStarts(patch: Partial<EventFormInput>): Partial<EventFormInput> {
@@ -63,25 +72,35 @@ export async function createEvent(input: EventFormInput): Promise<EventItem> {
       location: input.location,
       city: input.city,
       capacity: input.capacity,
-      poster_url: input.poster_url || undefined,
+      poster_url: input.poster_file ? URL.createObjectURL(input.poster_file) : undefined,
       price_inr: input.price_inr,
     });
   }
-  return apiFetch<EventItem>("/organizer/events", {
+  const created = await apiFetch<EventItem>("/organizer/events", {
     method: "POST",
     body: JSON.stringify(gaCreatePayload(input)),
   });
+  return (await savePoster(created.id, input)) ?? created;
 }
 
 export async function updateEvent(
   id: string,
   patch: Partial<EventFormInput>,
 ): Promise<EventItem> {
-  if (isMockMode()) return mockUpdateEvent(id, patch);
-  return apiFetch<EventItem>(`/organizer/events/${id}`, {
+  if (isMockMode()) {
+    const { poster_file, remove_poster, ...metadata } = patch;
+    return mockUpdateEvent(id, {
+      ...metadata,
+      ...(poster_file ? { poster_url: URL.createObjectURL(poster_file) } : {}),
+      ...(remove_poster ? { poster_url: "" } : {}),
+    });
+  }
+  const { poster_file, remove_poster, ...metadata } = patch;
+  const updated = await apiFetch<EventItem>(`/organizer/events/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(withIsoStarts(patch)),
+    body: JSON.stringify(withIsoStarts(metadata)),
   });
+  return (await savePoster(id, { poster_file, remove_poster: remove_poster ?? false })) ?? updated;
 }
 
 export async function eventBookings(eventId: string): Promise<Booking[]> {

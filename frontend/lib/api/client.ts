@@ -112,7 +112,8 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const headers = new Headers(init?.headers);
-  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
+  if (!headers.has("Content-Type") && !isFormData) headers.set("Content-Type", "application/json");
   if (UNSAFE_METHODS.has(method)) {
     const token = await readCsrfToken();
     if (token) headers.set("X-CSRFToken", token);

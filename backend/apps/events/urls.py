@@ -14,6 +14,8 @@ urlpatterns = [
          name="organizer-events"),
     path("organizer/events/<uuid:pk>", views.organizer_event_detail,
          name="organizer-event-detail"),
+    path("organizer/events/<uuid:pk>/poster", views.organizer_event_poster,
+         name="organizer-event-poster"),
     path("organizer/events/<uuid:pk>/bookings",
          booking_views.organizer_event_bookings,
          name="organizer-event-bookings"),

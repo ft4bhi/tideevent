@@ -26,15 +26,10 @@ export const eventFormSchema = z.object({
     .int("Capacity must be a whole number")
     .min(1, "Capacity must be at least 1")
     .max(100000, "Capacity must be 100000 or less"),
-  poster_url: z
-    .string()
-    .trim()
-    .refine(
-      (v) => v === "" || /^https?:\/\/.+/.test(v),
-      "Poster must be a valid http(s) URL or left empty",
-    )
-    .optional()
-    .default(""),
+  poster_file: z.custom<File | undefined>().optional()
+    .refine((file) => !file || ["image/jpeg", "image/png", "image/webp"].includes(file.type), "Choose a JPG, PNG, or WebP image")
+    .refine((file) => !file || file.size <= 5 * 1024 * 1024, "Image must be 5 MB or smaller"),
+  remove_poster: z.boolean().optional().default(false),
   price_inr: z.coerce
     .number()
     .int("Price must be a whole number")

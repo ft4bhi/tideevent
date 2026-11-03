@@ -1,9 +1,13 @@
 """B2 API tests: public discovery, organizer CRUD + inventory, admin lifecycle."""
 
 from datetime import timedelta
+from io import BytesIO
+from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -133,6 +137,41 @@ def test_ownership_enforced_on_edit_and_inventory():
 
     mine = org_b.get("/api/v1/organizer/events").json()
     assert mine["meta"]["total"] == 0
+
+
+def _png_upload(name="poster.png"):
+    from PIL import Image
+    image = Image.new("RGB", (2, 2), color="red")
+    data = BytesIO()
+    image.save(data, format="PNG")
+    return SimpleUploadedFile(name, data.getvalue(), content_type="image/png")
+
+
+def test_poster_upload_validation_ownership_and_admin(tmp_path):
+    org = authed("poster-owner@example.com", User.Role.ORGANIZER)
+    other = authed("poster-other@example.com", User.Role.ORGANIZER)
+    event = create_event(org, dict(GA_PAYLOAD))
+    endpoint = f"/api/v1/organizer/events/{event['id']}/poster"
+    with override_settings(MEDIA_ROOT=tmp_path):
+        upload = org.post(endpoint, {"poster": _png_upload()}, format="multipart")
+        assert upload.status_code == 200, upload.content
+        poster = upload.json()["poster_url"]
+        assert poster.startswith("/media/event-posters/")
+        assert (Path(tmp_path) / poster.removeprefix("/media/")).exists()
+
+        assert other.post(endpoint, {"poster": _png_upload()}, format="multipart").status_code == 403
+        bad = org.post(endpoint, {"poster": SimpleUploadedFile("bad.gif", b"GIF89a", content_type="image/gif")}, format="multipart")
+        assert bad.status_code == 422
+        forged = org.post(endpoint, {"poster": SimpleUploadedFile("forged.png", b"not really a PNG", content_type="image/png")}, format="multipart")
+        assert forged.status_code == 422
+        huge = org.post(endpoint, {"poster": SimpleUploadedFile("large.png", b"x" * (5 * 1024 * 1024 + 1), content_type="image/png")}, format="multipart")
+        assert huge.status_code == 422
+
+        admin = admin_client()
+        changed = admin.post(endpoint, {"poster": _png_upload("admin.png")}, format="multipart")
+        assert changed.status_code == 200
+
+    assert create_event(org, dict(GA_PAYLOAD, title="No poster"))["poster_url"] == ""
 
 
 def test_organizer_cannot_set_status():

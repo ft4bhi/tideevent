@@ -21,7 +21,8 @@ const FORM_INPUT: EventFormInput = {
   location: "City Amphitheatre",
   city: "Mumbai",
   capacity: 100,
-  poster_url: "",
+  poster_file: undefined,
+  remove_poster: false,
   price_inr: 500,
 };
 
@@ -62,11 +63,24 @@ describe("createEvent live payload", () => {
       location: FORM_INPUT.location,
       city: "Mumbai",
       capacity: 100,
-      poster_url: "",
       booking_mode: "GENERAL_ADMISSION",
       ticket_types: [{ name: "General", price_inr: 500, quantity_total: 100 }],
     });
     expect(body).not.toHaveProperty("price_inr");
+  });
+
+  it("uploads a selected poster as multipart without setting Content-Type", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ id: "e-poster" }, 201))
+      .mockResolvedValueOnce(jsonResponse({ id: "e-poster", poster_url: "/media/event-posters/a.png" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File(["png"], "poster.png", { type: "image/png" });
+    const { createEvent } = await import("@/lib/api/endpoints/organizer");
+    await createEvent({ ...FORM_INPUT, poster_file: file });
+    const [, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("poster")).toBe(file);
+    expect(new Headers(init.headers).has("Content-Type")).toBe(false);
   });
 
   it("creates a free event as a zero-price GA ticket type", async () => {

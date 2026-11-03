@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PosterImage } from "@/components/events/poster-image";
 import { organizerEvents } from "@/lib/api/endpoints/organizer";
 import { toMessage } from "@/lib/api/errors";
 import { formatDateTime } from "@/lib/utils/format";
@@ -72,7 +73,11 @@ export function OrganizerEventList() {
       {events.map((e) => (
         <li key={e.id}>
           <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg">
+                <PosterImage src={e.poster_url} alt={`${e.title} poster`} />
+              </div>
+              <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="truncate font-semibold text-[#202B3C]">{e.title}</p>
                 <Badge tone={e.status}>{e.status}</Badge>
@@ -83,6 +88,7 @@ export function OrganizerEventList() {
               <p className="mt-1 text-sm text-[#687386]">
                 Capacity {e.capacity} · Booked {e.booked_count}
               </p>
+              </div>
             </div>
             <div className="flex shrink-0 gap-2">
               <Link

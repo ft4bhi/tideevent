@@ -207,7 +207,7 @@ class EventCreateSerializer(serializers.Serializer):
     starts_at = serializers.DateTimeField()
     location = serializers.CharField(min_length=1, max_length=255)
     city = serializers.CharField(min_length=1, max_length=80)
-    poster_url = serializers.URLField(required=False, allow_blank=True, default="")
+    poster_url = serializers.CharField(required=False, allow_blank=True, default="", max_length=500)
     booking_mode = serializers.ChoiceField(choices=BookingMode.choices)
     capacity = serializers.IntegerField(min_value=1, max_value=MAX_CAPACITY,
                                         required=False, default=None)
@@ -308,7 +308,7 @@ class EventUpdateSerializer(serializers.Serializer):
     starts_at = serializers.DateTimeField(required=False)
     location = serializers.CharField(min_length=1, max_length=255, required=False)
     city = serializers.CharField(min_length=1, max_length=80, required=False)
-    poster_url = serializers.URLField(required=False, allow_blank=True)
+    poster_url = serializers.CharField(required=False, allow_blank=True, max_length=500)
     booking_mode = serializers.ChoiceField(choices=BookingMode.choices,
                                            required=False)
     capacity = serializers.IntegerField(min_value=1, max_value=MAX_CAPACITY,

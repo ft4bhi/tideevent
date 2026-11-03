@@ -9,7 +9,7 @@ const valid = {
   location: "NCPA Lawns",
   city: "Mumbai",
   capacity: 100,
-  poster_url: "",
+  poster_file: undefined,
   price_inr: 0,
 } as const;
 
@@ -26,11 +26,11 @@ describe("eventFormSchema (T-03)", () => {
     expect(eventFormSchema.safeParse({ ...valid, capacity: 0 }).success).toBe(false);
     expect(eventFormSchema.safeParse({ ...valid, title: "AB" }).success).toBe(false);
   });
-  it("rejects invalid poster URLs but allows empty", () => {
-    expect(eventFormSchema.safeParse({ ...valid, poster_url: "not-a-url" }).success).toBe(false);
-    expect(
-      eventFormSchema.safeParse({ ...valid, poster_url: "https://example.com/p.png" }).success,
-    ).toBe(true);
+  it("validates poster type and size", () => {
+    const file = (type: string, size: number) => ({ type, size });
+    expect(eventFormSchema.safeParse({ ...valid, poster_file: file("image/gif", 100) }).success).toBe(false);
+    expect(eventFormSchema.safeParse({ ...valid, poster_file: file("image/png", 5 * 1024 * 1024 + 1) }).success).toBe(false);
+    expect(eventFormSchema.safeParse({ ...valid, poster_file: file("image/webp", 100) }).success).toBe(true);
   });
   it("rejects unknown category/city", () => {
     expect(eventFormSchema.safeParse({ ...valid, category: "NOPE" }).success).toBe(false);

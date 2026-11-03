@@ -1,5 +1,7 @@
 """TideEvent backend URL configuration (API routes land here in B1+)."""
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
@@ -9,3 +11,6 @@ urlpatterns = [
     path("api/v1/", include("apps.events.urls")),
     path("api/v1/", include("apps.bookings.urls")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

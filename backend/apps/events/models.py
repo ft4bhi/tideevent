@@ -48,7 +48,8 @@ class Event(models.Model):
     starts_at = models.DateTimeField()
     location = models.CharField(max_length=255)
     city = models.CharField(max_length=80)
-    poster_url = models.URLField(blank=True, default="")
+    # Kept as poster_url for API compatibility; uploaded media uses a /media path.
+    poster_url = models.CharField(max_length=500, blank=True, default="")
     booking_mode = models.CharField(max_length=32, choices=BookingMode.choices)
     # GA only: total capacity. RS capacity is derived (sellable seats).
     capacity = models.PositiveIntegerField(null=True, blank=True)

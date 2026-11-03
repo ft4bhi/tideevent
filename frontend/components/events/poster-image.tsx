@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { ImageOff } from "lucide-react";
+import { apiBaseUrl } from "@/lib/api/client";
 
 export function PosterImage({
   src,
@@ -25,14 +26,16 @@ export function PosterImage({
       </div>
     );
   }
+  const imageSrc = src.startsWith("/media/") ? `${apiBaseUrl().replace(/\/api\/v1\/?$/, "")}${src}` : src;
   return (
     <Image
-      src={src}
+      src={imageSrc}
       alt={alt}
       fill
       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
       className={`object-cover ${className ?? ""}`}
       onError={() => setFailed(true)}
+      unoptimized
     />
   );
 }

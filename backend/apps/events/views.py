@@ -1,8 +1,12 @@
 """Event APIs: public discovery, organizer management, admin lifecycle (06)."""
 
+import uuid
 from datetime import datetime, time, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
@@ -172,6 +176,43 @@ def organizer_event_detail(request, pk):
     serializer = EventUpdateSerializer(event, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     event = serializer.save()
+    return Response(EventDetailSerializer(event).data)
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsOrganizerRole])
+def organizer_event_poster(request, pk):
+    """Upload or remove an event poster after the normal event write flow."""
+    event = _owned_event(pk, request.user)
+    if request.method == "DELETE":
+        event.poster_url = ""
+        event.save(update_fields=["poster_url", "updated_at"])
+        return Response(EventDetailSerializer(event).data)
+    uploaded = request.FILES.get("poster")
+    if uploaded is None:
+        raise ValidationError({"poster": "Choose an image to upload."})
+    if uploaded.size > 5 * 1024 * 1024:
+        raise ValidationError({"poster": "Image must be 5 MB or smaller."})
+    ext = Path(uploaded.name).suffix.lower()
+    formats = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
+    if ext not in formats:
+        raise ValidationError({"poster": "Use a JPG, JPEG, PNG, or WebP image."})
+    try:
+        from PIL import Image
+        image = Image.open(uploaded)
+        image.verify()
+        uploaded.seek(0)
+        image = Image.open(uploaded)
+        if image.format != formats[ext]:
+            raise ValueError("Image content does not match its file type.")
+        image.verify()
+        uploaded.seek(0)
+    except Exception:
+        raise ValidationError({"poster": "The uploaded file is not a valid supported image."}) from None
+    name = f"event-posters/{uuid.uuid4().hex}{ext}"
+    saved_name = default_storage.save(name, uploaded)
+    event.poster_url = f"{settings.MEDIA_URL}{saved_name}"
+    event.save(update_fields=["poster_url", "updated_at"])
     return Response(EventDetailSerializer(event).data)
 
 
